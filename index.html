@@ -448,7 +448,7 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 /* ── LOCAL DATA ── */
-let D = { workers: [], attendance: [], advances: [], settlements: [] };
+let D = { workers: [], attendance: [], advances: [], settlements: [], wageHistory: [] };
 let currentUser = null;
 let unsubscribers = [];
 
@@ -506,7 +506,7 @@ onAuthStateChanged(auth, user => {
 /* ── FIRESTORE REAL-TIME LISTENERS ── */
 function subscribeToData() {
   setSyncStatus('syncing', 'Loading data...');
-  const collections = ['workers','attendance','advances','settlements'];
+  const collections = ['workers','attendance','advances','settlements','wageHistory'];
   let loaded = 0;
   unsubscribers.forEach(u => u());
   unsubscribers = [];
@@ -622,20 +622,26 @@ function buildActions(page) {
   } else { ta.innerHTML=''; }
 }
 
+function getWageForMonth(w, m) {
+  const override = D.wageHistory.find(h => h.wid === w.id && h.month === m);
+  return override ? override.wage : w.wage;
+}
+
 function calcWorker(w, m) {
+  const wage = getWageForMonth(w, m);
   const att = D.attendance.filter(a => a.wid === w.id && a.date && a.date.startsWith(m));
   const p = att.filter(a => a.status === 'P').length;
   const h = att.filter(a => a.status === 'H').length;
   const ab = att.filter(a => a.status === 'A').length;
   const otDays = att.filter(a => a.ot).length;
-  const wages = Math.round((p + h * 0.5) * w.wage);
-  const otp = Math.round(otDays * w.wage * 0.5);
+  const wages = Math.round((p + h * 0.5) * wage);
+  const otp = Math.round(otDays * wage * 0.5);
   const advs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(m)).reduce((s,a) => s+a.amount, 0);
   const prevS = D.settlements.filter(s => s.wid === w.id && s.month < m);
   const carry = prevS.length ? (prevS[prevS.length-1].net < 0 ? prevS[prevS.length-1].net : 0) : 0;
   const net = wages + otp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
-  return { p, h, ab, otDays, wages, otp, advs, carry, net, paid: sett && sett.paid };
+  return { p, h, ab, otDays, wage, wages, otp, advs, carry, net, paid: sett && sett.paid };
 }
 
 /* ── DASHBOARD ── */
@@ -677,7 +683,7 @@ function renderDashboard() {
         <span class="wc-chip ca">${c.ab}A</span>
       </div>
       <div class="wc-rows">
-        <div class="wc-row"><span class="wc-lbl">Wages</span><span>${fmt(c.wages)}</span></div>
+        <div class="wc-row"><span class="wc-lbl">Wages (₹${c.wage}/day)</span><span>${fmt(c.wages)}</span></div>
         ${c.otp>0?`<div class="wc-row"><span class="wc-lbl">OT Pay</span><span class="text-green">+${fmt(c.otp)}</span></div>`:''}
         <div class="wc-row"><span class="wc-lbl">Advances</span><span class="text-red">${c.advs>0?'-'+fmt(c.advs):'-₹0'}</span></div>
         ${c.carry?`<div class="wc-row"><span class="wc-lbl">Carry Fwd</span><span>${fmtS(c.carry)}</span></div>`:''}
@@ -1007,18 +1013,27 @@ window.saveBulkAdv = async () => {
 /* ── SETTLEMENTS ── */
 window.generateSettlements = async () => {
   const m = document.getElementById('set-fm').value || thisMonth();
-  let added = 0;
+  if (!D.workers.length) { alert('No workers added yet.'); return; }
+  if (!confirm('This will regenerate all settlements for ' + mlabel(m) + ' based on current attendance and advances. Continue?')) return;
   setSyncStatus('syncing','Generating...');
   const batch = writeBatch(db);
+  // Delete existing settlements for this month first
+  D.settlements.filter(s => s.month === m).forEach(s => {
+    batch.delete(doc(db,'settlements',s.id));
+  });
+  // Recalculate and save fresh for all workers
   D.workers.forEach(w => {
-    if (D.settlements.find(s => s.wid===w.id && s.month===m)) return;
     const c = calcWorker(w, m);
-    batch.set(doc(db,'settlements',uid()), { wid:w.id, month:m, wages:c.wages, otPay:c.otp, advs:c.advs, carry:c.carry, net:c.net, paid:false, _updated:serverTimestamp() });
-    added++;
+    batch.set(doc(db,'settlements',uid()), {
+      wid: w.id, month: m,
+      wages: c.wages, otPay: c.otp,
+      advs: c.advs, carry: c.carry,
+      net: c.net, paid: false,
+      _updated: serverTimestamp()
+    });
   });
   await batch.commit();
-  setSyncStatus('ok', added===0?'Already generated':'Settlements created');
-  if (added===0) alert('Settlements for '+mlabel(m)+' already generated.');
+  setSyncStatus('ok','Settlements generated');
 };
 
 window.togglePaid = async (id) => {
@@ -1119,14 +1134,60 @@ window.openWorkerModal = (editId) => {
     <div class="modal-body">
       <div class="fg mb14"><label>Full Name</label><input id="m-wn" value="${w?w.name:''}"></div>
       <div class="row2 mb14">
-        <div class="fg"><label>Daily Wage (₹)</label><input id="m-ww" type="number" value="${w?w.wage:''}"></div>
+        <div class="fg"><label>Base Daily Wage (₹)</label><input id="m-ww" type="number" value="${w?w.wage:''}"></div>
         <div class="fg"><label>Phone (optional)</label><input id="m-wp" value="${w?w.phone||'':''}"></div>
       </div>
+      ${w ? `<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-bottom:10px">MONTHLY WAGE OVERRIDE</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Set a different wage for a specific month. Overrides the base wage for that month only.</div>
+        <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap">
+          <div class="fg" style="min-width:130px"><label>Month</label><input id="wh-month" type="month" value="${thisMonth()}"></div>
+          <div class="fg" style="min-width:100px"><label>Wage (₹)</label><input id="wh-wage" type="number" placeholder="${w.wage}"></div>
+          <button onclick="saveWageOverride('${w.id}')" style="flex-shrink:0">Set Wage</button>
+        </div>
+        <div id="wage-history-list">${renderWageHistory(w.id)}</div>
+      </div>` : ''}
     </div>
     <div class="modal-foot">
       <button onclick="closeModal()">Cancel</button>
       <button class="btn-dark" onclick="saveWorker('${editId||''}')">${w?'Save':'Add Worker'}</button>
     </div>`);
+};
+
+function renderWageHistory(wid) {
+  const history = D.wageHistory.filter(h => h.wid === wid).sort((a,b) => b.month.localeCompare(a.month));
+  if (!history.length) return `<div style="font-size:12px;color:var(--muted);padding:8px 0">No monthly overrides set.</div>`;
+  return `<table style="width:100%;font-size:12px;border-collapse:collapse">
+    <thead><tr>
+      <th style="text-align:left;padding:6px 8px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--border)">Month</th>
+      <th style="text-align:left;padding:6px 8px;font-size:10px;color:var(--muted);border-bottom:1px solid var(--border)">Wage</th>
+      <th style="border-bottom:1px solid var(--border)"></th>
+    </tr></thead>
+    <tbody>${history.map(h => `<tr>
+      <td style="padding:6px 8px">${mlabel(h.month)}</td>
+      <td style="padding:6px 8px;font-weight:500">${fmt(h.wage)}/day</td>
+      <td style="padding:6px 8px;text-align:right">
+        <button class="btn-icon btn-sm" style="color:var(--red)" onclick="delWageOverride('${h.id}','${wid}')">${trashIco()}</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+window.saveWageOverride = async (wid) => {
+  const month = document.getElementById('wh-month').value;
+  const wage = parseFloat(document.getElementById('wh-wage').value);
+  if (!month || !wage) { alert('Select month and enter wage.'); return; }
+  const existing = D.wageHistory.find(h => h.wid === wid && h.month === month);
+  const id = existing ? existing.id : uid();
+  await fsSet('wageHistory', id, { wid, month, wage });
+  document.getElementById('wh-wage').value = '';
+  document.getElementById('wage-history-list').innerHTML = renderWageHistory(wid);
+};
+
+window.delWageOverride = async (id, wid) => {
+  if (!confirm('Remove this wage override?')) return;
+  await fsDel('wageHistory', id);
+  document.getElementById('wage-history-list').innerHTML = renderWageHistory(wid);
 };
 
 window.saveWorker = async (editId) => {
@@ -1174,10 +1235,13 @@ window.openWorkerProfile = (wid) => {
     </div>
     <div class="modal-body">
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12px">
-        <span><span class="text-muted">Daily Wage:</span> <b>${fmt(w.wage)}</b></span>
+        <span><span class="text-muted">Base Daily Wage:</span> <b>${fmt(w.wage)}</b></span>
         <span><span class="text-muted">OT Bonus:</span> <b>${fmt(w.wage*0.5)}/day</b></span>
         <span><span class="text-muted">Phone:</span> <b>${w.phone||'—'}</b></span>
       </div>
+      ${D.wageHistory.filter(h=>h.wid===wid).length ? `<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:4px;padding:8px 12px;margin-bottom:14px;font-size:12px">
+        <b>Monthly wage overrides:</b> ${D.wageHistory.filter(h=>h.wid===wid).sort((a,b)=>b.month.localeCompare(a.month)).map(h=>`${mlabel(h.month)}: ${fmt(h.wage)}`).join(' · ')}
+      </div>` : ''}
       <div class="prof-stat-row">
         <div class="prof-stat"><div class="lbl">PRESENT</div><div class="val">${totalP}</div></div>
         <div class="prof-stat"><div class="lbl">HALF DAYS</div><div class="val">${totalH}</div></div>
