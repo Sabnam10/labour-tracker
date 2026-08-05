@@ -193,6 +193,15 @@ tbody tr:hover{background:#fafafa}
 .att-tog.sel-h{background:var(--amber);border-color:var(--amber);color:#fff}
 .att-tog.sel-a{background:var(--red);border-color:var(--red);color:#fff}
 .att-tog.sel-ot{background:var(--green);border-color:var(--green);color:#fff}
+.att-tog.sel-fn{background:#4a148c;border-color:#4a148c;color:#fff}
+.worker-inactive{opacity:0.45;pointer-events:none}
+.inactive-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:#e0e0e0;color:#757575;margin-left:6px}
+.toggle-switch{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle-switch input:checked + .toggle-slider{background:var(--green)}
+.toggle-switch input:checked + .toggle-slider:before{transform:translateX(16px)}
 
 /* BULK ADV */
 .fill-all-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
@@ -226,7 +235,8 @@ tbody tr:hover{background:#fafafa}
 @media(max-width:700px){
   .sidebar{display:none}
   .bottom-nav{display:flex}
-  .content{padding:12px 12px calc(var(--bottom-nav-h) + 12px);overflow-y:auto}
+  .content{padding:12px 12px calc(var(--bottom-nav-h) + 32px + env(safe-area-inset-bottom));overflow-y:auto}
+  .bottom-nav{padding-bottom:env(safe-area-inset-bottom);height:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom))}
   .topbar{padding:12px 14px}
   .topbar-left h2{font-size:18px}
   .topbar-right button .btn-label{display:none}
@@ -326,7 +336,7 @@ tbody tr:hover{background:#fafafa}
 
       <!-- DASHBOARD -->
       <div id="pg-dashboard" class="page active">
-        <div class="filter-row"><span class="lbl">Month:</span><input type="month" id="dash-month" style="width:160px;max-width:100%" oninput="renderDashboard()"></div>
+        <div class="filter-row"><span class="lbl">Month:</span><input type="month" id="dash-month" style="width:160px;max-width:100%" oninput="renderDashboard()" onchange="renderDashboard()"></div>
         <div class="stat-row">
           <div class="stat-card"><div class="lbl">NET PAYABLE</div><div class="val" id="d-net">₹0</div></div>
           <div class="stat-card"><div class="lbl">WORKERS</div><div class="val" id="d-workers">0</div></div>
@@ -343,7 +353,7 @@ tbody tr:hover{background:#fafafa}
       <div id="pg-attendance" class="page">
         <div class="filter-row">
           <span class="lbl">DATE:</span>
-          <input type="date" id="att-date" style="width:150px" oninput="renderAttendance()">
+          <input type="date" id="att-date" style="width:150px" oninput="renderAttendance()" onchange="renderAttendance()">
           <span class="chip cp" id="att-p">P:0</span>
           <span class="chip ch" id="att-h">H:0</span>
           <span class="chip ca" id="att-a">A:0</span>
@@ -359,7 +369,7 @@ tbody tr:hover{background:#fafafa}
       <div id="pg-advances" class="page">
         <div class="filter-row">
           <span class="lbl">MONTH:</span>
-          <input type="month" id="adv-fm" style="width:150px" oninput="renderAdvances()">
+          <input type="month" id="adv-fm" style="width:150px" oninput="renderAdvances()" onchange="renderAdvances()">
           <select id="adv-fw" style="width:140px" onchange="renderAdvances()"><option value="">All Workers</option></select>
           <span style="margin-left:auto;font-size:12px;font-weight:600">Total: <span class="text-red" id="adv-total">₹0</span></span>
         </div>
@@ -372,7 +382,7 @@ tbody tr:hover{background:#fafafa}
 
       <!-- SETTLEMENTS -->
       <div id="pg-settlements" class="page">
-        <div class="filter-row"><span class="lbl">MONTH:</span><input type="month" id="set-fm" style="width:150px" oninput="renderSettlements()"></div>
+        <div class="filter-row"><span class="lbl">MONTH:</span><input type="month" id="set-fm" style="width:150px" oninput="renderSettlements()" onchange="renderSettlements()"></div>
         <div class="tbl-card desktop-only"><div class="tbl-hd" id="set-hd">SETTLEMENTS</div><div id="set-body-desktop"></div></div>
         <div class="mobile-only">
           <div class="tbl-hd" id="set-hd-m" style="background:var(--white);border:1px solid var(--border);border-radius:4px 4px 0 0">SETTLEMENTS</div>
@@ -439,7 +449,7 @@ const firebaseConfig = {
 /* ── AUTHORISED EMAILS — ADD YOUR TEAM HERE ── */
 const ALLOWED_EMAILS = [
   "sabnamrajoria@gmail.com",
-  "gandhraj1705@gmail.com"
+  "gandharj1705@gmail.com"
 ];
 
 const app = initializeApp(firebaseConfig);
@@ -507,18 +517,30 @@ onAuthStateChanged(auth, user => {
 function subscribeToData() {
   setSyncStatus('syncing', 'Loading data...');
   const collections = ['workers','attendance','advances','settlements','wageHistory'];
-  let loaded = 0;
+  let initialLoads = {};
+  collections.forEach(c => initialLoads[c] = false);
+
   unsubscribers.forEach(u => u());
   unsubscribers = [];
 
   collections.forEach(col => {
     const unsub = onSnapshot(collection(db, col), snap => {
       D[col] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loaded++;
-      if (loaded >= collections.length) {
+
+      if (!initialLoads[col]) {
+        // First load for this collection
+        initialLoads[col] = true;
+        if (Object.values(initialLoads).every(Boolean)) {
+          // All collections loaded for first time
+          setSyncStatus('ok', 'Live · ' + new Date().toLocaleTimeString());
+          refreshCurrentPage();
+          syncAdvSelect();
+        }
+      } else {
+        // Subsequent real-time update — refresh immediately
         setSyncStatus('ok', 'Live · ' + new Date().toLocaleTimeString());
         refreshCurrentPage();
-        syncAdvSelect();
+        if (col === 'workers') syncAdvSelect();
       }
     }, err => {
       setSyncStatus('error', 'Connection error');
@@ -602,11 +624,18 @@ window.nav = function(page) {
 };
 
 function refreshCurrentPage() {
+  // Preserve current filter values before re-render
+  const attDate = document.getElementById('att-date');
+  const dashMonth = document.getElementById('dash-month');
+  const advFm = document.getElementById('adv-fm');
+  const advFw = document.getElementById('adv-fw');
+  const setFm = document.getElementById('set-fm');
+
   if (currentPage === 'dashboard') renderDashboard();
-  if (currentPage === 'attendance') renderAttendance();
-  if (currentPage === 'advances') renderAdvances();
-  if (currentPage === 'settlements') renderSettlements();
-  if (currentPage === 'labourers') renderLabourers();
+  else if (currentPage === 'attendance') renderAttendance();
+  else if (currentPage === 'advances') renderAdvances();
+  else if (currentPage === 'settlements') renderSettlements();
+  else if (currentPage === 'labourers') renderLabourers();
 }
 
 function buildActions(page) {
@@ -629,34 +658,38 @@ function getWageForMonth(w, m) {
 
 function calcWorker(w, m) {
   const wage = getWageForMonth(w, m);
+  // Only active workers or all (for settlements/history)
   const att = D.attendance.filter(a => a.wid === w.id && a.date && a.date.startsWith(m));
   const p = att.filter(a => a.status === 'P').length;
   const h = att.filter(a => a.status === 'H').length;
   const ab = att.filter(a => a.status === 'A').length;
   const otDays = att.filter(a => a.ot).length;
+  const fnDays = att.filter(a => a.fn).length; // full night = extra 1x wage
   const wages = Math.round((p + h * 0.5) * wage);
   const otp = Math.round(otDays * wage * 0.5);
+  const fnp = Math.round(fnDays * wage); // full night doubles the day = extra 1x
   const advs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(m)).reduce((s,a) => s+a.amount, 0);
   const prevS = D.settlements.filter(s => s.wid === w.id && s.month < m);
   const carry = prevS.length ? (prevS[prevS.length-1].net < 0 ? prevS[prevS.length-1].net : 0) : 0;
-  const net = wages + otp - advs + carry;
+  const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
-  return { p, h, ab, otDays, wage, wages, otp, advs, carry, net, paid: sett && sett.paid };
+  return { p, h, ab, otDays, fnDays, wage, wages, otp, fnp, advs, carry, net, paid: sett && sett.paid };
 }
 
 /* ── DASHBOARD ── */
 function renderDashboard() {
   const m = document.getElementById('dash-month').value || thisMonth();
   document.getElementById('page-sub').textContent = mlabel(m).toUpperCase() + ' SUMMARY';
+  const activeWorkers = D.workers.filter(w => w.active !== false);
   let tNet = 0, tPres = 0;
-  const calcs = D.workers.map(w => { const c = calcWorker(w, m); tNet += c.net; tPres += c.p; return { w, c }; });
+  const calcs = activeWorkers.map(w => { const c = calcWorker(w, m); tNet += c.net; tPres += c.p; return { w, c }; });
   const n = document.getElementById('d-net');
   n.innerHTML = tNet < 0 ? '-' + fmt(tNet) : fmt(tNet);
   n.className = 'val' + (tNet < 0 ? ' neg' : '');
-  document.getElementById('d-workers').textContent = D.workers.length;
+  document.getElementById('d-workers').textContent = activeWorkers.length;
   document.getElementById('d-present').textContent = tPres;
-  if (!D.workers.length) {
-    const emp = `<div class="empty">No workers yet. <a onclick="nav('labourers')">Add labourers</a>.</div>`;
+  if (!activeWorkers.length) {
+    const emp = `<div class="empty">No active workers. <a onclick="nav('labourers')">Go to Labourers</a> to activate.</div>`;
     document.getElementById('dash-table-desktop').innerHTML = emp;
     document.getElementById('dash-table-mobile').innerHTML = emp;
     return;
@@ -664,13 +697,14 @@ function renderDashboard() {
   const dRows = calcs.map(({w,c}) => `<tr>
     <td><a class="worker-link" onclick="openWorkerProfile('${w.id}')">${w.name}</a></td>
     <td><span class="chip cp">${c.p}</span>&nbsp;<span class="chip ch">${c.h}</span>&nbsp;<span class="chip ca">${c.ab}</span></td>
-    <td>${c.otDays}</td><td>${fmt(c.wages)}</td>
+    <td>${c.otDays}${c.fnDays?` <span style="color:#4a148c;font-size:10px;font-weight:700">+${c.fnDays}FN</span>`:''}</td>
+    <td>${fmt(c.wages)}${c.fnp>0?` <span style="color:#4a148c;font-size:10px">+${fmt(c.fnp)}</span>`:''}</td>
     <td class="text-red">${c.advs>0?'-'+fmt(c.advs):'-₹0'}</td>
     <td class="text-muted">${c.carry?fmtS(c.carry):'-₹0'}</td>
     <td>${c.net<0?'<span class="text-red">-'+fmt(c.net)+'</span>':fmt(c.net)}</td>
     <td><span class="badge ${c.paid?'badge-paid':'badge-unpaid'}">${c.paid?'PAID':'UNPAID'}</span></td>
   </tr>`).join('');
-  document.getElementById('dash-table-desktop').innerHTML = `<table><thead><tr><th>Name</th><th>Attendance</th><th>OT</th><th>Wages</th><th>Advances</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th></tr></thead><tbody>${dRows}</tbody></table>`;
+  document.getElementById('dash-table-desktop').innerHTML = `<table><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th></tr></thead><tbody>${dRows}</tbody></table>`;
   const mCards = calcs.map(({w,c}) => `
     <div class="worker-card">
       <div class="wc-top">
@@ -681,10 +715,13 @@ function renderDashboard() {
         <span class="wc-chip cp">${c.p}P</span>
         <span class="wc-chip ch">${c.h}H</span>
         <span class="wc-chip ca">${c.ab}A</span>
+        ${c.otDays?`<span class="wc-chip" style="color:var(--green)">${c.otDays}OT</span>`:''}
+        ${c.fnDays?`<span class="wc-chip" style="color:#4a148c">${c.fnDays}FN</span>`:''}
       </div>
       <div class="wc-rows">
         <div class="wc-row"><span class="wc-lbl">Wages (₹${c.wage}/day)</span><span>${fmt(c.wages)}</span></div>
         ${c.otp>0?`<div class="wc-row"><span class="wc-lbl">OT Pay</span><span class="text-green">+${fmt(c.otp)}</span></div>`:''}
+        ${c.fnp>0?`<div class="wc-row"><span class="wc-lbl">Full Night Pay</span><span style="color:#4a148c">+${fmt(c.fnp)}</span></div>`:''}
         <div class="wc-row"><span class="wc-lbl">Advances</span><span class="text-red">${c.advs>0?'-'+fmt(c.advs):'-₹0'}</span></div>
         ${c.carry?`<div class="wc-row"><span class="wc-lbl">Carry Fwd</span><span>${fmtS(c.carry)}</span></div>`:''}
         <div class="wc-row net"><span>Net Payable</span><span class="${c.net<0?'text-red':''}">${c.net<0?'-':''} ${fmt(c.net)}</span></div>
@@ -716,14 +753,18 @@ function renderAttendance() {
   const dRows = recs.map(r => `<tr>
     <td><a class="worker-link" onclick="openWorkerProfile('${r.wid}')">${wname(r.wid)}</a></td>
     <td><span class="chip c${r.status.toLowerCase()}">${r.status}</span></td>
-    <td>${r.ot?'<span class="chip cp">OT</span>':'—'}</td>
+    <td>
+        ${r.ot?'<span class="chip cp">OT</span>':''}
+        ${r.fn?'<span class="chip" style="background:#ede7f6;color:#4a148c">FN</span>':''}
+        ${!r.ot&&!r.fn?'—':''}
+      </td>
     <td class="text-muted">${r.note||'—'}</td>
     <td><div class="act">
       <button class="btn-icon btn-sm" onclick="openMarkModal('${r.id}')">${editIco()}</button>
       <button class="btn-icon btn-sm" style="color:var(--red)" onclick="delAtt('${r.id}')">${trashIco()}</button>
     </div></td>
   </tr>`).join('');
-  document.getElementById('att-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Status</th><th>OT</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${dRows}</tbody></table>`;
+  document.getElementById('att-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Status</th><th>OT/FN</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${dRows}</tbody></table>`;
   const mCards = recs.map(r => `
     <div class="att-card">
       <div class="att-card-left">
@@ -732,6 +773,7 @@ function renderAttendance() {
       </div>
       <div class="att-card-right">
         ${r.ot?'<span class="chip cp">OT</span>':''}
+        ${r.fn?'<span class="chip" style="background:#ede7f6;color:#4a148c">FN</span>':''}
         <span class="chip c${r.status.toLowerCase()}">${r.status}</span>
         <button class="btn-icon btn-sm" onclick="openMarkModal('${r.id}')">${editIco()}</button>
         <button class="btn-icon btn-sm" style="color:var(--red)" onclick="delAtt('${r.id}')">${trashIco()}</button>
@@ -760,10 +802,16 @@ window.openMarkModal = (editId) => {
           <option value="A"${r&&r.status==='A'?' selected':''}>Absent</option>
         </select></div>
       </div>
-      <div class="fg mb14"><label>OT (adds 0.5× daily wage)</label><select id="m-ot">
-        <option value="0"${!r||!r.ot?' selected':''}>No OT</option>
-        <option value="1"${r&&r.ot?' selected':''}>Has OT</option>
-      </select></div>
+      <div class="row2 mb14">
+        <div class="fg"><label>OT (adds 0.5× daily wage)</label><select id="m-ot">
+          <option value="0"${!r||!r.ot?' selected':''}>No OT</option>
+          <option value="1"${r&&r.ot?' selected':''}>Has OT</option>
+        </select></div>
+        <div class="fg"><label>Full Night (doubles daily wage)</label><select id="m-fn">
+          <option value="0"${!r||!r.fn?' selected':''}>No Full Night</option>
+          <option value="1"${r&&r.fn?' selected':''}>Full Night</option>
+        </select></div>
+      </div>
       <div class="fg mb10"><label>Notes</label><input id="m-note" value="${r?r.note||'':''}"></div>
     </div>
     <div class="modal-foot">
@@ -777,11 +825,12 @@ window.saveAtt = async (editId) => {
   const date = document.getElementById('m-date').value;
   const status = document.getElementById('m-st').value;
   const ot = document.getElementById('m-ot').value === '1';
+  const fn = document.getElementById('m-fn').value === '1';
   const note = document.getElementById('m-note').value.trim();
   if (!wid || !date) { alert('Select worker and date.'); return; }
   const id = editId || (D.attendance.find(a => a.wid===wid && a.date===date) || {}).id || uid();
-  await fsSet('attendance', id, { wid, date, status, ot, note });
-  closeModal();
+  closeModal(); // close immediately, save in background
+  await fsSet('attendance', id, { wid, date, status, ot, fn, note });
 };
 
 /* ── BULK MARK ── */
@@ -790,23 +839,26 @@ window.openBulkMark = () => {
   const d = document.getElementById('att-date').value || today();
   if (!D.workers.length) { alert('Add workers first.'); return; }
   bulkState = {};
-  D.workers.forEach(w => {
+  const activeWorkers = D.workers.filter(w => w.active !== false);
+  activeWorkers.forEach(w => {
     const ex = D.attendance.find(a => a.wid === w.id && a.date === d);
-    bulkState[w.id] = { status: ex ? ex.status : 'P', ot: ex ? !!ex.ot : false };
+    bulkState[w.id] = { status: ex ? ex.status : 'P', ot: ex ? !!ex.ot : false, fn: ex ? !!ex.fn : false };
   });
   openModal(buildBulkMarkHTML(d));
 };
 
 function buildBulkMarkHTML(d) {
-  const rows = D.workers.map(w => {
-    const st = bulkState[w.id].status; const ot = bulkState[w.id].ot;
+  const activeWorkers = D.workers.filter(w => w.active !== false);
+  const rows = activeWorkers.map(w => {
+    const st = bulkState[w.id].status; const ot = bulkState[w.id].ot; const fn = bulkState[w.id].fn;
     return `<div class="bulk-worker-row">
       <span class="bulk-worker-name">${w.name}</span>
       <div class="bulk-att-group">
         <button class="att-tog${st==='P'?' sel-p':''}" onclick="setBulkStatus('${w.id}','P')" id="bp-${w.id}">P</button>
         <button class="att-tog${st==='H'?' sel-h':''}" onclick="setBulkStatus('${w.id}','H')" id="bh-${w.id}">H</button>
         <button class="att-tog${st==='A'?' sel-a':''}" onclick="setBulkStatus('${w.id}','A')" id="ba-${w.id}">A</button>
-        <button class="att-tog${ot?' sel-ot':''}" onclick="toggleBulkOT('${w.id}')" id="bot-${w.id}" style="width:44px;font-size:11px">OT</button>
+        <button class="att-tog${ot?' sel-ot':''}" onclick="toggleBulkOT('${w.id}')" id="bot-${w.id}" style="width:36px;font-size:10px">OT</button>
+        <button class="att-tog${fn?' sel-fn':''}" onclick="toggleBulkFN('${w.id}')" id="bfn-${w.id}" style="width:36px;font-size:10px">FN</button>
       </div>
     </div>`;
   }).join('');
@@ -824,7 +876,7 @@ function buildBulkMarkHTML(d) {
     </div>
     <div class="modal-foot">
       <button onclick="closeModal()">Cancel</button>
-      <button class="btn-dark" onclick="saveBulkMark()">Save ${D.workers.length} Workers</button>
+      <button class="btn-dark" onclick="saveBulkMark()">Save ${activeWorkers.length} Workers</button>
     </div>`;
 }
 
@@ -840,22 +892,29 @@ window.toggleBulkOT = (wid) => {
   const btn = document.getElementById('bot-'+wid);
   if (btn) btn.className = 'att-tog' + (bulkState[wid].ot?' sel-ot':'');
 };
+window.toggleBulkFN = (wid) => {
+  bulkState[wid].fn = !bulkState[wid].fn;
+  const btn = document.getElementById('bfn-'+wid);
+  if (btn) btn.className = 'att-tog' + (bulkState[wid].fn?' sel-fn':'');
+};
 window.setAll = (status) => D.workers.forEach(w => window.setBulkStatus(w.id, status));
 window.bulkDateChanged = () => {
   const d = document.getElementById('bulk-date').value;
-  D.workers.forEach(w => {
+  const activeWorkers = D.workers.filter(w => w.active !== false);
+  activeWorkers.forEach(w => {
     const ex = D.attendance.find(a => a.wid===w.id && a.date===d);
-    bulkState[w.id] = { status: ex?ex.status:'P', ot: ex?!!ex.ot:false };
+    bulkState[w.id] = { status: ex?ex.status:'P', ot: ex?!!ex.ot:false, fn: ex?!!ex.fn:false };
   });
-  document.getElementById('bulk-wlist').innerHTML = D.workers.map(w => {
-    const st = bulkState[w.id].status; const ot = bulkState[w.id].ot;
+  document.getElementById('bulk-wlist').innerHTML = activeWorkers.map(w => {
+    const st = bulkState[w.id].status; const ot = bulkState[w.id].ot; const fn = bulkState[w.id].fn;
     return `<div class="bulk-worker-row">
       <span class="bulk-worker-name">${w.name}</span>
       <div class="bulk-att-group">
         <button class="att-tog${st==='P'?' sel-p':''}" onclick="setBulkStatus('${w.id}','P')" id="bp-${w.id}">P</button>
         <button class="att-tog${st==='H'?' sel-h':''}" onclick="setBulkStatus('${w.id}','H')" id="bh-${w.id}">H</button>
         <button class="att-tog${st==='A'?' sel-a':''}" onclick="setBulkStatus('${w.id}','A')" id="ba-${w.id}">A</button>
-        <button class="att-tog${ot?' sel-ot':''}" onclick="toggleBulkOT('${w.id}')" id="bot-${w.id}" style="width:44px;font-size:11px">OT</button>
+        <button class="att-tog${ot?' sel-ot':''}" onclick="toggleBulkOT('${w.id}')" id="bot-${w.id}" style="width:36px;font-size:10px">OT</button>
+        <button class="att-tog${fn?' sel-fn':''}" onclick="toggleBulkFN('${w.id}')" id="bfn-${w.id}" style="width:36px;font-size:10px">FN</button>
       </div>
     </div>`;
   }).join('');
@@ -864,11 +923,12 @@ window.saveBulkMark = async () => {
   const d = document.getElementById('bulk-date').value || today();
   setSyncStatus('syncing','Saving attendance...');
   const batch = writeBatch(db);
-  D.workers.forEach(w => {
-    const { status, ot } = bulkState[w.id];
+  const activeWorkers = D.workers.filter(w => w.active !== false);
+  activeWorkers.forEach(w => {
+    const { status, ot, fn } = bulkState[w.id];
     const ex = D.attendance.find(a => a.wid===w.id && a.date===d);
     const id = ex ? ex.id : uid();
-    batch.set(doc(db,'attendance',id), { wid:w.id, date:d, status, ot, note: ex?ex.note||'' : '', _updated: serverTimestamp() });
+    batch.set(doc(db,'attendance',id), { wid:w.id, date:d, status, ot, fn: fn||false, note: ex?ex.note||'' : '', _updated: serverTimestamp() });
   });
   await batch.commit();
   setSyncStatus('ok','Saved · '+new Date().toLocaleTimeString());
@@ -949,8 +1009,8 @@ window.saveAdv = async (editId) => {
   const note = document.getElementById('m-anote').value.trim();
   if (!wid||!date||!amount) { alert('Fill all fields.'); return; }
   const id = editId || uid();
+  closeModal(); // close immediately, save in background
   await fsSet('advances', id, { wid, date, amount, note });
-  closeModal();
 };
 
 window.openBulkAdv = () => {
@@ -1026,7 +1086,7 @@ window.generateSettlements = async () => {
     const c = calcWorker(w, m);
     batch.set(doc(db,'settlements',uid()), {
       wid: w.id, month: m,
-      wages: c.wages, otPay: c.otp,
+      wages: c.wages, otPay: c.otp, fnPay: c.fnp,
       advs: c.advs, carry: c.carry,
       net: c.net, paid: false,
       _updated: serverTimestamp()
@@ -1055,7 +1115,7 @@ function renderSettlements() {
   }
   const dRows = recs.map(r => `<tr>
     <td><a class="worker-link" onclick="openWorkerProfile('${r.wid}')">${wname(r.wid)}</a></td>
-    <td>${fmt(r.wages)}</td><td>${fmt(r.otPay||0)}</td>
+    <td>${fmt(r.wages)}</td><td>${fmt(r.otPay||0)}</td><td style="color:#4a148c">${r.fnPay>0?'+'+fmt(r.fnPay):'—'}</td>
     <td class="text-red">${r.advs>0?'-'+fmt(r.advs):'-₹0'}</td>
     <td class="text-muted">${r.carry?fmtS(r.carry):'—'}</td>
     <td>${fmtS(r.net)}</td>
@@ -1065,7 +1125,7 @@ function renderSettlements() {
       <button class="btn-icon btn-sm" onclick="togglePaid('${r.id}')">${checkIco()}</button>
     </div></td>
   </tr>`).join('');
-  document.getElementById('set-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Wages</th><th>OT Pay</th><th>Advances</th><th>Carry Fwd</th><th>Net</th><th>Status</th><th></th></tr></thead><tbody>${dRows}</tbody></table>`;
+  document.getElementById('set-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Wages</th><th>OT Pay</th><th>FN Pay</th><th>Advances</th><th>Carry Fwd</th><th>Net</th><th>Status</th><th></th></tr></thead><tbody>${dRows}</tbody></table>`;
   const mCards = recs.map(r => `
     <div class="worker-card">
       <div class="wc-top">
@@ -1096,30 +1156,52 @@ function renderLabourers() {
     document.getElementById('lab-body-mobile').innerHTML = emp;
     return;
   }
-  const dRows = ws.map(w => `<tr>
-    <td><a class="worker-link" onclick="openWorkerProfile('${w.id}')">${w.name}</a></td>
+  const dRows = ws.map(w => {
+    const isActive = w.active !== false;
+    return `<tr style="${isActive?'':'opacity:0.5'}">
+    <td>
+      <a class="worker-link" onclick="openWorkerProfile('${w.id}')">${w.name}</a>
+      ${!isActive?'<span class="inactive-badge">Away</span>':''}
+    </td>
     <td>${fmt(w.wage)}</td><td class="text-muted">${w.phone||'—'}</td>
-    <td><div class="act">
-      <button class="btn-icon btn-sm" onclick="openWorkerProfile('${w.id}')">${eyeIco()}</button>
-      <button class="btn-icon btn-sm" onclick="openWorkerModal('${w.id}')">${editIco()}</button>
-      <button class="btn-icon btn-sm" style="color:var(--red)" onclick="delWorker('${w.id}')">${trashIco()}</button>
-    </div></td>
-  </tr>`).join('');
-  document.getElementById('lab-body-desktop').innerHTML = `<table><thead><tr><th>Name</th><th>Daily Wage</th><th>Phone</th><th>Actions</th></tr></thead><tbody>${dRows}</tbody></table>`;
-  const mCards = ws.map(w => `
-    <div class="att-card">
-      <div class="att-card-left">
-        <div class="name" onclick="openWorkerProfile('${w.id}')" style="cursor:pointer">${w.name}</div>
-        <div class="meta">${fmt(w.wage)}/day · ${w.phone||'No phone'}</div>
-      </div>
-      <div class="att-card-right">
+    <td>
+      <div class="act" style="align-items:center">
+        <label class="toggle-switch" title="${isActive?'Mark as Away':'Mark as Active'}">
+          <input type="checkbox" ${isActive?'checked':''} onchange="toggleWorkerActive('${w.id}',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
         <button class="btn-icon btn-sm" onclick="openWorkerProfile('${w.id}')">${eyeIco()}</button>
         <button class="btn-icon btn-sm" onclick="openWorkerModal('${w.id}')">${editIco()}</button>
         <button class="btn-icon btn-sm" style="color:var(--red)" onclick="delWorker('${w.id}')">${trashIco()}</button>
       </div>
-    </div>`).join('');
+    </td>
+  </tr>`;}).join('');
+  document.getElementById('lab-body-desktop').innerHTML = `<table><thead><tr><th>Name</th><th>Daily Wage</th><th>Phone</th><th>Active / Actions</th></tr></thead><tbody>${dRows}</tbody></table>`;
+  const mCards = ws.map(w => {
+    const isActive = w.active !== false;
+    return `
+    <div class="att-card" style="${isActive?'':'opacity:0.5'}">
+      <div class="att-card-left">
+        <div class="name" onclick="openWorkerProfile('${w.id}')" style="cursor:pointer">${w.name} ${!isActive?'<span class="inactive-badge">Away</span>':''}</div>
+        <div class="meta">${fmt(w.wage)}/day · ${w.phone||'No phone'}</div>
+      </div>
+      <div class="att-card-right">
+        <label class="toggle-switch" title="${isActive?'Mark Away':'Mark Active'}">
+          <input type="checkbox" ${isActive?'checked':''} onchange="toggleWorkerActive('${w.id}',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn-icon btn-sm" onclick="openWorkerProfile('${w.id}')">${eyeIco()}</button>
+        <button class="btn-icon btn-sm" onclick="openWorkerModal('${w.id}')">${editIco()}</button>
+        <button class="btn-icon btn-sm" style="color:var(--red)" onclick="delWorker('${w.id}')">${trashIco()}</button>
+      </div>
+    </div>`;}).join('');
   document.getElementById('lab-body-mobile').innerHTML = mCards;
 }
+
+window.toggleWorkerActive = async (id, active) => {
+  const w = D.workers.find(x => x.id === id);
+  if (w) await fsSet('workers', id, { ...w, active });
+};
 
 window.delWorker = async (id) => {
   if (!confirm('Remove worker?')) return;
@@ -1196,8 +1278,9 @@ window.saveWorker = async (editId) => {
   const phone = document.getElementById('m-wp').value.trim();
   if (!name||!wage) { alert('Name and wage required.'); return; }
   const id = editId || uid();
-  await fsSet('workers', id, { name, wage, phone });
-  closeModal(); syncAdvSelect();
+  closeModal(); // close immediately
+  await fsSet('workers', id, { name, wage, phone, active: true });
+  syncAdvSelect();
 };
 
 function syncAdvSelect() {
