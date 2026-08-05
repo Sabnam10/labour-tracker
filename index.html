@@ -48,7 +48,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Ro
 .topbar-left h2{font-size:20px;font-weight:500}
 .topbar-left p{font-size:9px;color:var(--muted);letter-spacing:.08em;margin-top:3px}
 .topbar-right{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.content{flex:1;overflow-y:auto;padding:16px 20px;background:var(--bg);-webkit-overflow-scrolling:touch}
+.content{flex:1;overflow-y:auto;padding:16px 20px 40px;background:var(--bg);-webkit-overflow-scrolling:touch}
 .page{display:none}.page.active{display:block}
 
 /* BOTTOM NAV */
@@ -103,7 +103,7 @@ input:focus,select:focus{border-color:var(--blue)}
 .stat-card .val.neg{color:var(--red)}
 
 /* TABLE */
-.tbl-card{background:var(--white);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.tbl-card{background:var(--white);border:1px solid var(--border);border-radius:4px;overflow:visible}
 .tbl-hd{padding:10px 14px;font-size:9px;font-weight:700;letter-spacing:.09em;color:var(--muted);border-bottom:1px solid var(--border);background:#fafafa}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead th{padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--text);border-bottom:1px solid var(--border);background:#fafafa;white-space:nowrap}
@@ -336,7 +336,7 @@ tbody tr:hover{background:#fafafa}
 
       <!-- DASHBOARD -->
       <div id="pg-dashboard" class="page active">
-        <div class="filter-row"><span class="lbl">Month:</span><input type="month" id="dash-month" style="width:160px;max-width:100%" oninput="renderDashboard()" onchange="renderDashboard()"></div>
+        <div class="filter-row"><span class="lbl">Month:</span><input type="month" id="dash-month" style="width:160px;max-width:100%"></div>
         <div class="stat-row">
           <div class="stat-card"><div class="lbl">NET PAYABLE</div><div class="val" id="d-net">₹0</div></div>
           <div class="stat-card"><div class="lbl">WORKERS</div><div class="val" id="d-workers">0</div></div>
@@ -353,7 +353,7 @@ tbody tr:hover{background:#fafafa}
       <div id="pg-attendance" class="page">
         <div class="filter-row">
           <span class="lbl">DATE:</span>
-          <input type="date" id="att-date" style="width:150px" oninput="renderAttendance()" onchange="renderAttendance()">
+          <input type="date" id="att-date" style="width:150px">
           <span class="chip cp" id="att-p">P:0</span>
           <span class="chip ch" id="att-h">H:0</span>
           <span class="chip ca" id="att-a">A:0</span>
@@ -369,7 +369,7 @@ tbody tr:hover{background:#fafafa}
       <div id="pg-advances" class="page">
         <div class="filter-row">
           <span class="lbl">MONTH:</span>
-          <input type="month" id="adv-fm" style="width:150px" oninput="renderAdvances()" onchange="renderAdvances()">
+          <input type="month" id="adv-fm" style="width:150px">
           <select id="adv-fw" style="width:140px" onchange="renderAdvances()"><option value="">All Workers</option></select>
           <span style="margin-left:auto;font-size:12px;font-weight:600">Total: <span class="text-red" id="adv-total">₹0</span></span>
         </div>
@@ -382,7 +382,7 @@ tbody tr:hover{background:#fafafa}
 
       <!-- SETTLEMENTS -->
       <div id="pg-settlements" class="page">
-        <div class="filter-row"><span class="lbl">MONTH:</span><input type="month" id="set-fm" style="width:150px" oninput="renderSettlements()" onchange="renderSettlements()"></div>
+        <div class="filter-row"><span class="lbl">MONTH:</span><input type="month" id="set-fm" style="width:150px"></div>
         <div class="tbl-card desktop-only"><div class="tbl-hd" id="set-hd">SETTLEMENTS</div><div id="set-body-desktop"></div></div>
         <div class="mobile-only">
           <div class="tbl-hd" id="set-hd-m" style="background:var(--white);border:1px solid var(--border);border-radius:4px 4px 0 0">SETTLEMENTS</div>
@@ -624,13 +624,6 @@ window.nav = function(page) {
 };
 
 function refreshCurrentPage() {
-  // Preserve current filter values before re-render
-  const attDate = document.getElementById('att-date');
-  const dashMonth = document.getElementById('dash-month');
-  const advFm = document.getElementById('adv-fm');
-  const advFw = document.getElementById('adv-fw');
-  const setFm = document.getElementById('set-fm');
-
   if (currentPage === 'dashboard') renderDashboard();
   else if (currentPage === 'attendance') renderAttendance();
   else if (currentPage === 'advances') renderAdvances();
@@ -1358,10 +1351,24 @@ window.openWorkerProfile = (wid) => {
 
 /* ── INIT ── */
 function initApp() {
-  document.getElementById('dash-month').value = thisMonth();
-  document.getElementById('att-date').value = today();
-  document.getElementById('adv-fm').value = thisMonth();
-  document.getElementById('set-fm').value = thisMonth();
+  // Only set defaults if not already set
+  const dm = document.getElementById('dash-month');
+  const ad = document.getElementById('att-date');
+  const af = document.getElementById('adv-fm');
+  const sf = document.getElementById('set-fm');
+  if (!dm.value) dm.value = thisMonth();
+  if (!ad.value) ad.value = today();
+  if (!af.value) af.value = thisMonth();
+  if (!sf.value) sf.value = thisMonth();
+
+  // Add robust event listeners for date/month inputs (covers all browsers/mobile)
+  ['input','change'].forEach(evt => {
+    dm.addEventListener(evt, () => renderDashboard());
+    ad.addEventListener(evt, () => renderAttendance());
+    af.addEventListener(evt, () => renderAdvances());
+    sf.addEventListener(evt, () => renderSettlements());
+  });
+
   buildActions('dashboard');
 }
 
