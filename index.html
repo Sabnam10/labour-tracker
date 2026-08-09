@@ -244,8 +244,8 @@ tbody tr:hover{background:#f8fafc}
 .amt-box .sym{padding:0 8px;font-size:12px;color:var(--muted);background:#f8fafc;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;flex-shrink:0;font-weight:600}
 .amt-box input{border:none;height:100%;width:80px;border-radius:0;text-align:right;padding-right:8px;box-shadow:none}
 .amt-box input:focus{outline:none;box-shadow:none}
-  
-  /* ── PROFILE ── */
+
+/* ── PROFILE ── */
 .prof-stat-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px}
 .prof-stat{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px}
 .prof-stat .lbl{font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
@@ -373,9 +373,35 @@ tbody tr:hover{background:#f8fafc}
       <div id="pg-dashboard" class="page active">
         <div class="filter-row"><span class="lbl">Month:</span><input type="month" id="dash-month" style="width:160px;max-width:100%"></div>
         <div class="stat-row">
-          <div class="stat-card"><div class="lbl">NET PAYABLE</div><div class="val" id="d-net">₹0</div></div>
-          <div class="stat-card"><div class="lbl">WORKERS</div><div class="val" id="d-workers">0</div></div>
-          <div class="stat-card"><div class="lbl">PRESENT DAYS</div><div class="val" id="d-present">0</div></div>
+          <div class="stat-card">
+            <div class="lbl">Total Net Payable</div>
+            <div class="val" id="d-net">₹0</div>
+            <div class="val-sub" id="d-net-sub"></div>
+          </div>
+          <div class="stat-card">
+            <div class="lbl">Active Workers</div>
+            <div class="val" id="d-workers">0</div>
+            <div class="val-sub" id="d-workers-sub"></div>
+          </div>
+          <div class="stat-card">
+            <div class="lbl">Present Today</div>
+            <div class="val" id="d-present">0</div>
+            <div class="val-sub" id="d-present-sub"></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px" id="d-extra-stats">
+          <div class="stat-card" style="border-left:3px solid var(--green)">
+            <div class="lbl">Total Wages</div>
+            <div class="val" id="d-wages" style="font-size:20px">₹0</div>
+          </div>
+          <div class="stat-card" style="border-left:3px solid var(--red)">
+            <div class="lbl">Total Advances</div>
+            <div class="val" id="d-advances" style="font-size:20px">₹0</div>
+          </div>
+          <div class="stat-card" style="border-left:3px solid var(--orange)">
+            <div class="lbl">Unpaid Settlements</div>
+            <div class="val" id="d-unpaid" style="font-size:20px">0</div>
+          </div>
         </div>
         <div class="tbl-card desktop-only"><div class="tbl-hd">WORKER BREAKDOWN</div><div id="dash-table-desktop"></div></div>
         <div class="mobile-only">
@@ -702,7 +728,7 @@ function calcWorker(w, m) {
   const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
   return { p, h, ab, otDays, fnDays, wage, wages, otp, fnp, advs, carry, net, paid: sett && sett.paid };
-  }
+}
 
 /* ── DASHBOARD ── */
 function renderDashboard() {
@@ -715,7 +741,25 @@ function renderDashboard() {
   n.innerHTML = tNet < 0 ? '-' + fmt(tNet) : fmt(tNet);
   n.className = 'val' + (tNet < 0 ? ' neg' : '');
   document.getElementById('d-workers').textContent = activeWorkers.length;
-  document.getElementById('d-present').textContent = tPres;
+  const inactiveCount = D.workers.filter(w => w.active === false).length;
+  document.getElementById('d-workers-sub').textContent = inactiveCount > 0 ? inactiveCount + ' away' : 'all on site';
+
+  // Present today
+  const todayStr = today();
+  const presentToday = D.attendance.filter(a => a.date === todayStr && a.status === 'P').length;
+  document.getElementById('d-present').textContent = presentToday;
+  document.getElementById('d-present-sub').textContent = tPres + ' this month';
+
+  // Net sub-label
+  const unpaidCount = D.settlements.filter(s => s.month === m && !s.paid).length;
+  document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' unpaid settlements' : 'all settled';
+
+  // Extra stats
+  const tWages = calcs.reduce((s,{c}) => s + c.wages + c.otp + c.fnp, 0);
+  const tAdvances = calcs.reduce((s,{c}) => s + c.advs, 0);
+  document.getElementById('d-wages').textContent = fmt(tWages);
+  document.getElementById('d-advances').textContent = fmt(tAdvances);
+  document.getElementById('d-unpaid').textContent = unpaidCount;
   if (!activeWorkers.length) {
     const emp = `<div class="empty">No active workers. <a onclick="nav('labourers')">Go to Labourers</a> to activate.</div>`;
     document.getElementById('dash-table-desktop').innerHTML = emp;
@@ -964,7 +1008,7 @@ window.saveBulkMark = async () => {
   document.getElementById('att-date').value = d;
 };
 
-  /* ── ADVANCES ── */
+/* ── ADVANCES ── */
 function renderAdvances() {
   const m = document.getElementById('adv-fm').value || thisMonth();
   const wf = document.getElementById('adv-fw').value;
@@ -1169,9 +1213,9 @@ function renderSettlements() {
       </div>
     </div>`).join('');
   document.getElementById('set-body-mobile').innerHTML = mCards;
-  }
+}
 
-  /* ── LABOURERS ── */
+/* ── LABOURERS ── */
 function renderLabourers() {
   const q = (document.getElementById('lab-q').value||'').toLowerCase();
   const ws = D.workers.filter(w => !q || w.name.toLowerCase().includes(q));
@@ -1318,72 +1362,117 @@ function syncAdvSelect() {
 }
 
 /* ── WORKER PROFILE ── */
-window.openWorkerProfile = (wid) => {
+window.openWorkerProfile = (wid, profileMonth) => {
   const w = D.workers.find(x => x.id === wid); if (!w) return;
-  const allAtt = D.attendance.filter(a => a.wid===wid).sort((a,b) => b.date.localeCompare(a.date));
-  const allAdv = D.advances.filter(a => a.wid===wid).sort((a,b) => b.date.localeCompare(a.date));
+  const m = profileMonth || document.getElementById('dash-month').value || thisMonth();
+  const c = calcWorker(w, m);
+
+  const monthAtt = D.attendance.filter(a => a.wid===wid && a.date && a.date.startsWith(m)).sort((a,b) => b.date.localeCompare(a.date));
+  const monthAdv = D.advances.filter(a => a.wid===wid && a.date && a.date.startsWith(m)).sort((a,b) => b.date.localeCompare(a.date));
   const allSett = D.settlements.filter(s => s.wid===wid).sort((a,b) => b.month.localeCompare(a.month));
-  const totalP = allAtt.filter(a => a.status==='P').length;
-  const totalH = allAtt.filter(a => a.status==='H').length;
-  const totalOT = allAtt.filter(a => a.ot).length;
-  const totalAdv = allAdv.reduce((s,a) => s+a.amount, 0);
-  const attRows = allAtt.length ? allAtt.map(a => `<tr>
-    <td>${a.date}</td><td><span class="chip c${a.status.toLowerCase()}">${a.status}</span></td>
-    <td>${a.ot?'<span class="chip cp">OT</span>':'—'}</td><td class="text-muted">${a.note||'—'}</td>
-  </tr>`).join('') : `<tr><td colspan="4" style="padding:14px;text-align:center;color:var(--muted)">No records</td></tr>`;
-  const advRows = allAdv.length ? allAdv.map(a => `<tr>
-    <td>${a.date}</td><td class="text-red">${fmt(a.amount)}</td><td class="text-muted">${a.note||'—'}</td>
-  </tr>`).join('') : `<tr><td colspan="3" style="padding:14px;text-align:center;color:var(--muted)">No records</td></tr>`;
+
+  const allMonths = [...new Set([
+    ...D.attendance.filter(a=>a.wid===wid&&a.date).map(a=>a.date.slice(0,7)),
+    ...D.advances.filter(a=>a.wid===wid&&a.date).map(a=>a.date.slice(0,7)),
+    ...D.settlements.filter(s=>s.wid===wid).map(s=>s.month),
+    m
+  ])].sort((a,b)=>b.localeCompare(a));
+
+  const monthOpts = allMonths.map(mo => `<option value="${mo}" ${mo===m?'selected':''}>${mlabel(mo)}</option>`).join('');
+  const wageOverride = D.wageHistory.find(h => h.wid===wid && h.month===m);
+
+  const attRows = monthAtt.length ? monthAtt.map(a => `<tr>
+    <td>${a.date}</td>
+    <td><span class="chip c${a.status.toLowerCase()}">${a.status}</span></td>
+    <td>${a.ot?'<span class="chip cp">OT</span>':''}${a.fn?'<span class="chip" style="background:var(--purple-bg);color:var(--purple)">FN</span>':''}${!a.ot&&!a.fn?'—':''}</td>
+    <td class="text-muted">${a.note||'—'}</td>
+  </tr>`).join('') : `<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--muted)">No attendance for ${mlabel(m)}</td></tr>`;
+
+  const advRows = monthAdv.length ? monthAdv.map(a => `<tr>
+    <td>${a.date}</td><td class="text-red" style="font-weight:600">${fmt(a.amount)}</td><td class="text-muted">${a.note||'—'}</td>
+  </tr>`).join('') : `<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--muted)">No advances for ${mlabel(m)}</td></tr>`;
+
   const settRows = allSett.length ? allSett.map(s => `<tr>
-    <td>${mlabel(s.month)}</td><td>${fmt(s.wages)}</td><td>${fmt(s.otPay||0)}</td>
-    <td class="text-red">${s.advs>0?'-'+fmt(s.advs):'-₹0'}</td><td>${fmtS(s.net)}</td>
+    <td style="font-weight:600">${mlabel(s.month)}</td>
+    <td>${fmt(s.wages)}</td><td>${fmt(s.otPay||0)}</td>
+    <td class="text-red">${s.advs>0?'-'+fmt(s.advs):'-₹0'}</td>
+    <td style="font-weight:600">${fmtS(s.net)}</td>
     <td><span class="badge ${s.paid?'badge-paid':'badge-unpaid'}">${s.paid?'PAID':'UNPAID'}</span></td>
-  </tr>`).join('') : `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--muted)">No settlements</td></tr>`;
+  </tr>`).join('') : `<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No settlements yet</td></tr>`;
+
   openModal(`
     <div class="modal-head">
-      <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${w.name}</h3>
+      <h3>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        ${w.name}
+      </h3>
       <button class="modal-close" onclick="closeModal()">${closeIco()}</button>
     </div>
     <div class="modal-body">
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12px">
-        <span><span class="text-muted">Base Daily Wage:</span> <b>${fmt(w.wage)}</b></span>
-        <span><span class="text-muted">OT Bonus:</span> <b>${fmt(w.wage*0.5)}/day</b></span>
-        <span><span class="text-muted">Phone:</span> <b>${w.phone||'—'}</b></span>
+
+      <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;align-items:center">
+        <span><span class="text-muted">Base Wage:</span> <b>${fmt(w.wage)}/day</b></span>
+        ${wageOverride?`<span style="color:var(--accent);font-weight:700">★ This month: ${fmt(wageOverride.wage)}/day</span>`:''}
+        <span><span class="text-muted">OT:</span> <b>+${fmt(w.wage*0.5)}/day</b></span>
+        ${w.phone?`<span><span class="text-muted">📞</span> <b>${w.phone}</b></span>`:''}
       </div>
-      ${D.wageHistory.filter(h=>h.wid===wid).length ? `<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:4px;padding:8px 12px;margin-bottom:14px;font-size:12px">
-        <b>Monthly wage overrides:</b> ${D.wageHistory.filter(h=>h.wid===wid).sort((a,b)=>b.month.localeCompare(a.month)).map(h=>`${mlabel(h.month)}: ${fmt(h.wage)}`).join(' · ')}
-      </div>` : ''}
-      <div class="prof-stat-row">
-        <div class="prof-stat"><div class="lbl">PRESENT</div><div class="val">${totalP}</div></div>
-        <div class="prof-stat"><div class="lbl">HALF DAYS</div><div class="val">${totalH}</div></div>
-        <div class="prof-stat"><div class="lbl">OT DAYS</div><div class="val">${totalOT}</div></div>
-        <div class="prof-stat"><div class="lbl">TOTAL ADVANCES</div><div class="val text-red">${fmt(totalAdv)}</div></div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--accent-light);border:1.5px solid rgba(249,115,22,0.2);border-radius:var(--radius-sm)">
+        <span style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap">MONTH:</span>
+        <select onchange="openWorkerProfile('${wid}',this.value)" style="height:32px;font-size:12px;font-weight:600;border-color:var(--accent);flex:1;max-width:180px">${monthOpts}</select>
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap">${monthAtt.length} days marked</span>
       </div>
-      <div class="prof-section">
-        <div class="prof-section-title">ATTENDANCE (${allAtt.length} records)</div>
-        <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:4px">
-          <table class="prof-tbl"><thead><tr><th>Date</th><th>Status</th><th>OT</th><th>Notes</th></tr></thead><tbody>${attRows}</tbody></table>
+
+      <div class="prof-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+        <div class="prof-stat"><div class="lbl">Present</div><div class="val" style="color:var(--green)">${c.p}</div></div>
+        <div class="prof-stat"><div class="lbl">Half Day</div><div class="val" style="color:var(--amber)">${c.h}</div></div>
+        <div class="prof-stat"><div class="lbl">Absent</div><div class="val" style="color:var(--red)">${c.ab}</div></div>
+        <div class="prof-stat"><div class="lbl">OT Days</div><div class="val" style="color:var(--blue)">${c.otDays}</div></div>
+      </div>
+
+      <div style="background:var(--sidebar-bg);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:rgba(255,255,255,0.4);margin-bottom:10px;text-transform:uppercase">${mlabel(m)} Financial Summary</div>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:13px">
+          <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Wages earned</span><span style="color:#fff;font-weight:600">${fmt(c.wages)}</span></div>
+          ${c.otp>0?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">OT Pay</span><span style="color:#60a5fa;font-weight:600">+${fmt(c.otp)}</span></div>`:''}
+          ${c.fnp>0?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Full Night</span><span style="color:#c4b5fd;font-weight:600">+${fmt(c.fnp)}</span></div>`:''}
+          <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Advances paid</span><span style="color:#fca5a5;font-weight:600">${c.advs>0?'-'+fmt(c.advs):'₹0'}</span></div>
+          ${c.carry?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Carry forward</span><span style="color:#fbbf24;font-weight:600">${c.carry<0?'-':''}${fmt(c.carry)}</span></div>`:''}
+          <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:4px;padding-top:10px;display:flex;justify-content:space-between;font-size:16px;font-weight:800">
+            <span style="color:rgba(255,255,255,0.8)">Net Payable</span>
+            <span style="color:${c.net<0?'#fca5a5':'#4ade80'}">${c.net<0?'-':''}${fmt(c.net)}</span>
+          </div>
         </div>
       </div>
+
       <div class="prof-section">
-        <div class="prof-section-title">ADVANCES (${allAdv.length} records)</div>
-        <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:4px">
+        <div class="prof-section-title">Attendance — ${mlabel(m)} (${monthAtt.length} records)</div>
+        <div style="max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:var(--radius-sm)">
+          <table class="prof-tbl"><thead><tr><th>Date</th><th>Status</th><th>OT/FN</th><th>Notes</th></tr></thead><tbody>${attRows}</tbody></table>
+        </div>
+      </div>
+
+      <div class="prof-section">
+        <div class="prof-section-title">Advances — ${mlabel(m)} · Total: <span class="text-red">${fmt(c.advs)}</span></div>
+        <div style="max-height:180px;overflow-y:auto;border:1.5px solid var(--border);border-radius:var(--radius-sm)">
           <table class="prof-tbl"><thead><tr><th>Date</th><th>Amount</th><th>Reason</th></tr></thead><tbody>${advRows}</tbody></table>
         </div>
       </div>
+
       <div class="prof-section">
-        <div class="prof-section-title">SETTLEMENTS (${allSett.length} months)</div>
-        <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:4px">
+        <div class="prof-section-title">Settlement History — All Months</div>
+        <div style="max-height:180px;overflow-y:auto;border:1.5px solid var(--border);border-radius:var(--radius-sm)">
           <table class="prof-tbl"><thead><tr><th>Month</th><th>Wages</th><th>OT</th><th>Advances</th><th>Net</th><th>Status</th></tr></thead><tbody>${settRows}</tbody></table>
         </div>
       </div>
+
     </div>
     <div class="modal-foot">
-      <button onclick="openWorkerModal('${wid}');closeModal();">${editIco()} Edit</button>
-      <button onclick="closeModal()">Close</button>
+      <button onclick="openWorkerModal('${wid}');closeModal();">${editIco()} Edit Worker</button>
+      <button class="btn-dark" onclick="closeModal()">Close</button>
     </div>`);
 };
-  
+
 /* ── INIT ── */
 function initApp() {
   // Only set defaults if not already set
