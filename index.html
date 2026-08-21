@@ -519,7 +519,7 @@ const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
 /* ── LOCAL DATA ── */
-let D = { workers: [], attendance: [], advances: [], settlements: [], wageHistory: [] };
+let D = { workers: [], attendance: [], advances: [], settlements: [], wageHistory: [], paidStatus: [] };
 let currentUser = null;
 let unsubscribers = [];
 
@@ -577,7 +577,7 @@ onAuthStateChanged(auth, user => {
 /* ── FIRESTORE REAL-TIME LISTENERS ── */
 function subscribeToData() {
   setSyncStatus('syncing', 'Loading data...');
-  const collections = ['workers','attendance','advances','settlements','wageHistory'];
+  const collections = ['workers','attendance','advances','settlements','wageHistory','paidStatus'];
   let initialLoads = {};
   collections.forEach(c => initialLoads[c] = false);
 
@@ -699,7 +699,7 @@ function buildActions(page) {
   } else if (page==='advances') {
     ta.innerHTML=`<button onclick="openBulkAdv()">${bulkIco()} <span class="btn-label">Bulk</span></button><button class="btn-accent" onclick="openAdvModal()">${plusIco()} <span class="btn-label">Record</span></button>`;
   } else if (page==='settlements') {
-    ta.innerHTML=`<button class="btn-accent" onclick="generateSettlements()">${plusIco()} <span class="btn-label">Generate</span></button>`;
+    ta.innerHTML='';
   } else if (page==='labourers') {
     ta.innerHTML=`<button class="btn-accent" onclick="openWorkerModal()">${plusIco()} <span class="btn-label">Add Worker</span></button>`;
   } else { ta.innerHTML=''; }
@@ -723,8 +723,9 @@ function calcWorker(w, m) {
   const otp = Math.round(otDays * wage * 0.5);
   const fnp = Math.round(fnDays * wage); // full night doubles the day = extra 1x
   const advs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(m)).reduce((s,a) => s+a.amount, 0);
-  const prevS = D.settlements.filter(s => s.wid === w.id && s.month < m);
-  const carry = prevS.length ? (prevS[prevS.length-1].net < 0 ? prevS[prevS.length-1].net : 0) : 0;
+  const prevS = D.settlements.filter(s => s.wid === w.id && s.month < m).sort((a,b) => a.month.localeCompare(b.month));
+  const lastSett = prevS.length ? prevS[prevS.length-1] : null;
+  const carry = lastSett && lastSett.net < 0 ? lastSett.net : 0;
   const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
   return { p, h, ab, otDays, fnDays, wage, wages, otp, fnp, advs, carry, net, paid: sett && sett.paid };
@@ -751,8 +752,9 @@ function renderDashboard() {
   document.getElementById('d-present-sub').textContent = tPres + ' this month';
 
   // Net sub-label
-  const unpaidCount = D.settlements.filter(s => s.month === m && !s.paid).length;
-  document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' unpaid settlements' : 'all settled';
+  const activeW = D.workers.filter(w => w.active !== false);
+  const unpaidCount = activeW.filter(w => { const c = calcWorker(w, m); return !isPaid(w.id, m, c.net); }).length;
+  document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' still unpaid' : 'all settled ✓';
 
   // Extra stats
   const tWages = calcs.reduce((s,{c}) => s + c.wages + c.otp + c.fnp, 0);
@@ -760,6 +762,8 @@ function renderDashboard() {
   document.getElementById('d-wages').textContent = fmt(tWages);
   document.getElementById('d-advances').textContent = fmt(tAdvances);
   document.getElementById('d-unpaid').textContent = unpaidCount;
+  const totalW = activeW.length;
+  document.getElementById('d-workers-sub').textContent = unpaidCount > 0 ? (totalW - unpaidCount) + ' paid · ' + unpaidCount + ' pending' : 'all paid ✓';
   if (!activeWorkers.length) {
     const emp = `<div class="empty">No active workers. <a onclick="nav('labourers')">Go to Labourers</a> to activate.</div>`;
     document.getElementById('dash-table-desktop').innerHTML = emp;
@@ -1142,87 +1146,84 @@ window.saveBulkAdv = async () => {
   closeModal();
 };
 
-/* ── SETTLEMENTS ── */
-window.generateSettlements = async () => {
-  const m = document.getElementById('set-fm').value || thisMonth();
-  if (!D.workers.length) { alert('No workers added yet.'); return; }
-  if (!confirm('This will regenerate all settlements for ' + mlabel(m) + ' based on current attendance and advances. Continue?')) return;
-  setSyncStatus('syncing','Generating...');
-  const batch = writeBatch(db);
-  // Delete existing settlements for this month first
-  D.settlements.filter(s => s.month === m).forEach(s => {
-    batch.delete(doc(db,'settlements',s.id));
-  });
-  // Recalculate and save fresh for all workers
-  D.workers.forEach(w => {
-    const c = calcWorker(w, m);
-    // Auto-mark paid if net <= 0 (advances covered or exceeded wages)
-    const autoPaid = c.net <= 0;
-    batch.set(doc(db,'settlements',uid()), {
-      wid: w.id, month: m,
-      wages: c.wages, otPay: c.otp, fnPay: c.fnp,
-      advs: c.advs, carry: c.carry,
-      net: c.net, paid: autoPaid,
-      _updated: serverTimestamp()
-    });
-  });
-  await batch.commit();
-  setSyncStatus('ok','Settlements generated');
-};
+/* ── SETTLEMENTS — live computed, no generate step ── */
 
-window.togglePaid = async (id) => {
-  const s = D.settlements.find(x => x.id === id);
-  if (!s) return;
-  // If net <= 0 it should always stay paid — warn user
-  if (s.paid && s.net <= 0) {
-    if (!confirm('This settlement was auto-marked paid because advances covered the wages. Mark as unpaid anyway?')) return;
+function getPaidKey(wid, month) { return wid + '_' + month; }
+
+function isPaid(wid, month, net) {
+  // Auto-paid if net <= 0
+  if (net <= 0) return true;
+  // Check manual paid status
+  const ps = D.paidStatus.find(p => p.wid === wid && p.month === month);
+  return ps ? ps.paid : false;
+}
+
+window.togglePaid = async (wid, month, currentNet) => {
+  if (currentNet <= 0) {
+    if (!confirm('This worker has no outstanding balance (advances covered wages). Mark as unpaid anyway?')) return;
   }
-  await fsSet('settlements', id, { ...s, paid: !s.paid });
+  const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
+  const currentPaid = existing ? existing.paid : false;
+  const id = existing ? existing.id : uid();
+  await fsSet('paidStatus', id, { wid, month, paid: !currentPaid });
 };
 
 function renderSettlements() {
   const m = document.getElementById('set-fm').value || thisMonth();
-  const recs = D.settlements.filter(s => s.month === m);
-  const label = mlabel(m).toUpperCase()+' — '+recs.length+' SETTLEMENTS';
+  const activeWorkers = D.workers.filter(w => w.active !== false);
+  const label = mlabel(m).toUpperCase() + ' — ' + activeWorkers.length + ' WORKERS';
   document.getElementById('set-hd').textContent = label;
   document.getElementById('set-hd-m').textContent = label;
-  if (!recs.length) {
-    const emp = `<div class="empty">No settlements. Click Generate.</div>`;
+  if (!activeWorkers.length) {
+    const emp = `<div class="empty">No active workers.</div>`;
     document.getElementById('set-body-desktop').innerHTML = emp;
     document.getElementById('set-body-mobile').innerHTML = emp;
     return;
   }
+  // Live-compute settlements from attendance + advances
+  const recs = activeWorkers.map(w => {
+    const c = calcWorker(w, m);
+    const paid = isPaid(w.id, m, c.net);
+    return { wid: w.id, name: w.name, wages: c.wages, otPay: c.otp, fnPay: c.fnp, advs: c.advs, carry: c.carry, net: c.net, paid };
+  });
+
   const dRows = recs.map(r => {
     const isAutoPaid = r.net <= 0;
     const paidBadge = r.paid
       ? (isAutoPaid
-          ? `<span class="badge badge-paid" title="Auto-paid: advances covered wages" style="background:#dcfce7;color:#15803d">✓ AUTO-PAID</span>`
+          ? `<span class="badge badge-paid" style="background:#dcfce7;color:#15803d" title="Auto: advances covered wages">✓ AUTO-PAID</span>`
           : `<span class="badge badge-paid">PAID</span>`)
       : `<span class="badge badge-unpaid">UNPAID</span>`;
     return `<tr>
-    <td><a class="worker-link" onclick="openWorkerProfile('${r.wid}')">${wname(r.wid)}</a></td>
-    <td>${fmt(r.wages)}</td><td>${fmt(r.otPay||0)}</td><td style="color:#4a148c">${r.fnPay>0?'+'+fmt(r.fnPay):'—'}</td>
+    <td><a class="worker-link" onclick="openWorkerProfile('${r.wid}')">${r.name}</a></td>
+    <td>${fmt(r.wages)}</td>
+    <td>${r.otPay>0?fmt(r.otPay):'—'}</td>
+    <td style="color:#7c3aed">${r.fnPay>0?'+'+fmt(r.fnPay):'—'}</td>
     <td class="text-red">${r.advs>0?'-'+fmt(r.advs):'-₹0'}</td>
     <td class="text-muted">${r.carry?fmtS(r.carry):'—'}</td>
-    <td style="font-weight:600">${fmtS(r.net)}</td>
+    <td style="font-weight:700">${fmtS(r.net)}</td>
     <td>${paidBadge}</td>
     <td><div class="act">
-      <button class="btn-icon btn-sm" onclick="openWorkerProfile('${r.wid}')">${eyeIco()}</button>
-      <button class="btn-icon btn-sm" title="${r.paid?'Mark Unpaid':'Mark Paid'}" onclick="togglePaid('${r.id}')">${checkIco()}</button>
+      <button class="btn-icon btn-sm" onclick="openWorkerProfile('${r.wid}')" title="View profile">${eyeIco()}</button>
+      <button class="btn-icon btn-sm" title="${r.paid?'Mark Unpaid':'Mark Paid'}" onclick="togglePaid('${r.wid}','${m}',${r.net})">${checkIco()}</button>
     </div></td>
   </tr>`;}).join('');
-  document.getElementById('set-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Wages</th><th>OT Pay</th><th>FN Pay</th><th>Advances</th><th>Carry Fwd</th><th>Net</th><th>Status</th><th></th></tr></thead><tbody>${dRows}</tbody></table>`;
+  document.getElementById('set-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Wages</th><th>OT</th><th>FN</th><th>Advances</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th><th></th></tr></thead><tbody>${dRows}</tbody></table>`;
+
   const mCards = recs.map(r => {
     const isAutoPaid = r.net <= 0;
     return `
     <div class="worker-card">
       <div class="wc-top">
-        <span class="wc-name" onclick="openWorkerProfile('${r.wid}')" style="cursor:pointer">${wname(r.wid)}</span>
-        <span class="badge ${r.paid?'badge-paid':'badge-unpaid'}" onclick="togglePaid('${r.id}')" style="cursor:pointer">${r.paid?(isAutoPaid?'✓ AUTO-PAID':'PAID'):'UNPAID'}</span>
+        <span class="wc-name" onclick="openWorkerProfile('${r.wid}')" style="cursor:pointer">${r.name}</span>
+        <span class="badge ${r.paid?'badge-paid':'badge-unpaid'}" onclick="togglePaid('${r.wid}','${m}',${r.net})" style="cursor:pointer">
+          ${r.paid?(isAutoPaid?'✓ AUTO-PAID':'PAID'):'UNPAID'}
+        </span>
       </div>
       <div class="wc-rows">
         <div class="wc-row"><span class="wc-lbl">Wages</span><span>${fmt(r.wages)}</span></div>
-        ${r.otPay?`<div class="wc-row"><span class="wc-lbl">OT Pay</span><span class="text-green">+${fmt(r.otPay)}</span></div>`:''}
+        ${r.otPay>0?`<div class="wc-row"><span class="wc-lbl">OT Pay</span><span class="text-green">+${fmt(r.otPay)}</span></div>`:''}
+        ${r.fnPay>0?`<div class="wc-row"><span class="wc-lbl">Full Night</span><span style="color:var(--purple)">+${fmt(r.fnPay)}</span></div>`:''}
         <div class="wc-row"><span class="wc-lbl">Advances</span><span class="text-red">${r.advs>0?'-'+fmt(r.advs):'-₹0'}</span></div>
         ${r.carry?`<div class="wc-row"><span class="wc-lbl">Carry Fwd</span><span>${fmtS(r.carry)}</span></div>`:''}
         <div class="wc-row net"><span>Net Payable</span><span class="${r.net<0?'text-red':''}">${r.net<0?'-':''} ${fmt(r.net)}</span></div>
@@ -1408,13 +1409,22 @@ window.openWorkerProfile = (wid, profileMonth) => {
     <td>${a.date}</td><td class="text-red" style="font-weight:600">${fmt(a.amount)}</td><td class="text-muted">${a.note||'—'}</td>
   </tr>`).join('') : `<tr><td colspan="3" style="padding:16px;text-align:center;color:var(--muted)">No advances for ${mlabel(m)}</td></tr>`;
 
-  const settRows = allSett.length ? allSett.map(s => `<tr>
-    <td style="font-weight:600">${mlabel(s.month)}</td>
-    <td>${fmt(s.wages)}</td><td>${fmt(s.otPay||0)}</td>
-    <td class="text-red">${s.advs>0?'-'+fmt(s.advs):'-₹0'}</td>
-    <td style="font-weight:600">${fmtS(s.net)}</td>
-    <td><span class="badge ${s.paid?'badge-paid':'badge-unpaid'}">${s.paid?'PAID':'UNPAID'}</span></td>
-  </tr>`).join('') : `<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No settlements yet</td></tr>`;
+  // Get all months this worker has data in
+  const workerMonths = [...new Set([
+    ...D.attendance.filter(a=>a.wid===wid&&a.date).map(a=>a.date.slice(0,7)),
+    ...D.advances.filter(a=>a.wid===wid&&a.date).map(a=>a.date.slice(0,7))
+  ])].sort((a,b)=>b.localeCompare(a));
+  const settRows = workerMonths.length ? workerMonths.map(sm => {
+    const sc = calcWorker(w, sm);
+    const sPaid = isPaid(wid, sm, sc.net);
+    return `<tr>
+    <td style="font-weight:600">${mlabel(sm)}</td>
+    <td>${fmt(sc.wages)}</td>
+    <td>${sc.otp>0?fmt(sc.otp):'—'}</td>
+    <td class="text-red">${sc.advs>0?'-'+fmt(sc.advs):'-₹0'}</td>
+    <td style="font-weight:700">${fmtS(sc.net)}</td>
+    <td><span class="badge ${sPaid?'badge-paid':'badge-unpaid'}">${sPaid?(sc.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span></td>
+  </tr>`;}).join('') : `<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No data yet</td></tr>`;
 
   openModal(`
     <div class="modal-head">
