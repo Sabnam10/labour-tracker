@@ -1156,11 +1156,13 @@ window.generateSettlements = async () => {
   // Recalculate and save fresh for all workers
   D.workers.forEach(w => {
     const c = calcWorker(w, m);
+    // Auto-mark paid if net <= 0 (advances covered or exceeded wages)
+    const autoPaid = c.net <= 0;
     batch.set(doc(db,'settlements',uid()), {
       wid: w.id, month: m,
       wages: c.wages, otPay: c.otp, fnPay: c.fnp,
       advs: c.advs, carry: c.carry,
-      net: c.net, paid: false,
+      net: c.net, paid: autoPaid,
       _updated: serverTimestamp()
     });
   });
@@ -1170,7 +1172,12 @@ window.generateSettlements = async () => {
 
 window.togglePaid = async (id) => {
   const s = D.settlements.find(x => x.id === id);
-  if (s) await fsSet('settlements', id, { ...s, paid: !s.paid });
+  if (!s) return;
+  // If net <= 0 it should always stay paid — warn user
+  if (s.paid && s.net <= 0) {
+    if (!confirm('This settlement was auto-marked paid because advances covered the wages. Mark as unpaid anyway?')) return;
+  }
+  await fsSet('settlements', id, { ...s, paid: !s.paid });
 };
 
 function renderSettlements() {
@@ -1185,24 +1192,33 @@ function renderSettlements() {
     document.getElementById('set-body-mobile').innerHTML = emp;
     return;
   }
-  const dRows = recs.map(r => `<tr>
+  const dRows = recs.map(r => {
+    const isAutoPaid = r.net <= 0;
+    const paidBadge = r.paid
+      ? (isAutoPaid
+          ? `<span class="badge badge-paid" title="Auto-paid: advances covered wages" style="background:#dcfce7;color:#15803d">✓ AUTO-PAID</span>`
+          : `<span class="badge badge-paid">PAID</span>`)
+      : `<span class="badge badge-unpaid">UNPAID</span>`;
+    return `<tr>
     <td><a class="worker-link" onclick="openWorkerProfile('${r.wid}')">${wname(r.wid)}</a></td>
     <td>${fmt(r.wages)}</td><td>${fmt(r.otPay||0)}</td><td style="color:#4a148c">${r.fnPay>0?'+'+fmt(r.fnPay):'—'}</td>
     <td class="text-red">${r.advs>0?'-'+fmt(r.advs):'-₹0'}</td>
     <td class="text-muted">${r.carry?fmtS(r.carry):'—'}</td>
-    <td>${fmtS(r.net)}</td>
-    <td><span class="badge ${r.paid?'badge-paid':'badge-unpaid'}">${r.paid?'PAID':'UNPAID'}</span></td>
+    <td style="font-weight:600">${fmtS(r.net)}</td>
+    <td>${paidBadge}</td>
     <td><div class="act">
       <button class="btn-icon btn-sm" onclick="openWorkerProfile('${r.wid}')">${eyeIco()}</button>
-      <button class="btn-icon btn-sm" onclick="togglePaid('${r.id}')">${checkIco()}</button>
+      <button class="btn-icon btn-sm" title="${r.paid?'Mark Unpaid':'Mark Paid'}" onclick="togglePaid('${r.id}')">${checkIco()}</button>
     </div></td>
-  </tr>`).join('');
+  </tr>`;}).join('');
   document.getElementById('set-body-desktop').innerHTML = `<table><thead><tr><th>Worker</th><th>Wages</th><th>OT Pay</th><th>FN Pay</th><th>Advances</th><th>Carry Fwd</th><th>Net</th><th>Status</th><th></th></tr></thead><tbody>${dRows}</tbody></table>`;
-  const mCards = recs.map(r => `
+  const mCards = recs.map(r => {
+    const isAutoPaid = r.net <= 0;
+    return `
     <div class="worker-card">
       <div class="wc-top">
         <span class="wc-name" onclick="openWorkerProfile('${r.wid}')" style="cursor:pointer">${wname(r.wid)}</span>
-        <span class="badge ${r.paid?'badge-paid':'badge-unpaid'}" onclick="togglePaid('${r.id}')" style="cursor:pointer">${r.paid?'PAID':'UNPAID'}</span>
+        <span class="badge ${r.paid?'badge-paid':'badge-unpaid'}" onclick="togglePaid('${r.id}')" style="cursor:pointer">${r.paid?(isAutoPaid?'✓ AUTO-PAID':'PAID'):'UNPAID'}</span>
       </div>
       <div class="wc-rows">
         <div class="wc-row"><span class="wc-lbl">Wages</span><span>${fmt(r.wages)}</span></div>
