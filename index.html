@@ -1227,7 +1227,7 @@ function renderSettlements() {
         ${r.carry?`<div class="wc-row"><span class="wc-lbl">Carry Fwd</span><span>${fmtS(r.carry)}</span></div>`:''}
         <div class="wc-row net"><span>Net Payable</span><span class="${r.net<0?'text-red':''}">${r.net<0?'-':''} ${fmt(r.net)}</span></div>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
   document.getElementById('set-body-mobile').innerHTML = mCards;
 }
 
