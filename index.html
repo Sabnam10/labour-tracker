@@ -758,7 +758,8 @@ function renderDashboard() {
 
   // Extra stats
   const tWages = calcs.reduce((s,{c}) => s + c.wages + c.otp + c.fnp, 0);
-  const tAdvances = calcs.reduce((s,{c}) => s + c.advs, 0);
+  // Count ALL workers advances (including inactive) to match Advances tab total
+  const tAdvances = D.advances.filter(a => a.date && a.date.startsWith(m)).reduce((s,a) => s + a.amount, 0);
   document.getElementById('d-wages').textContent = fmt(tWages);
   document.getElementById('d-advances').textContent = fmt(tAdvances);
   document.getElementById('d-unpaid').textContent = unpaidCount;
@@ -1449,11 +1450,15 @@ window.openWorkerProfile = (wid, profileMonth) => {
         <span style="font-size:11px;color:var(--muted);white-space:nowrap">${monthAtt.length} days marked</span>
       </div>
 
-      <div class="prof-stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+      <div class="prof-stat-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px">
         <div class="prof-stat"><div class="lbl">Present</div><div class="val" style="color:var(--green)">${c.p}</div></div>
         <div class="prof-stat"><div class="lbl">Half Day</div><div class="val" style="color:var(--amber)">${c.h}</div></div>
         <div class="prof-stat"><div class="lbl">Absent</div><div class="val" style="color:var(--red)">${c.ab}</div></div>
+      </div>
+      <div class="prof-stat-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
         <div class="prof-stat"><div class="lbl">OT Days</div><div class="val" style="color:var(--blue)">${c.otDays}</div></div>
+        <div class="prof-stat"><div class="lbl">Full Night</div><div class="val" style="color:#7c3aed">${c.fnDays}</div></div>
+        <div class="prof-stat"><div class="lbl">Eff. Days</div><div class="val">${(c.p + c.h * 0.5).toFixed(1)}</div></div>
       </div>
 
       <div style="background:var(--sidebar-bg);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:16px">
