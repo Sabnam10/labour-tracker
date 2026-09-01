@@ -389,18 +389,18 @@ tbody tr:hover{background:#f8fafc}
             <div class="val-sub" id="d-present-sub"></div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px" id="d-extra-stats">
-          <div class="stat-card" style="border-left:3px solid var(--green)">
+        <div class="stat-row" style="margin-bottom:20px">
+          <div class="stat-card" style="border-top:3px solid var(--green)">
             <div class="lbl">Total Wages</div>
-            <div class="val" id="d-wages" style="font-size:20px">₹0</div>
+            <div class="val" id="d-wages" style="font-size:22px">₹0</div>
           </div>
-          <div class="stat-card" style="border-left:3px solid var(--red)">
+          <div class="stat-card" style="border-top:3px solid var(--red)">
             <div class="lbl">Total Advances</div>
-            <div class="val" id="d-advances" style="font-size:20px">₹0</div>
+            <div class="val" id="d-advances" style="font-size:22px">₹0</div>
           </div>
-          <div class="stat-card" style="border-left:3px solid var(--orange)">
+          <div class="stat-card" style="border-top:3px solid var(--orange)">
             <div class="lbl">Unpaid Settlements</div>
-            <div class="val" id="d-unpaid" style="font-size:20px">0</div>
+            <div class="val" id="d-unpaid" style="font-size:22px">0</div>
           </div>
         </div>
         <div class="tbl-card desktop-only"><div class="tbl-hd">WORKER BREAKDOWN</div><div id="dash-table-desktop"></div></div>
@@ -728,72 +728,84 @@ function calcWorker(w, m) {
   const carry = lastSett && lastSett.net < 0 ? lastSett.net : 0;
   const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
-  return { p, h, ab, otDays, fnDays, wage, wages, otp, fnp, advs, carry, net, paid: sett && sett.paid };
+  return { p, h, ab, otDays, fnDays, wage, wages, otp, fnp, advs, carry, net };
 }
 
 /* ── DASHBOARD ── */
 function renderDashboard() {
   const m = document.getElementById('dash-month').value || thisMonth();
   document.getElementById('page-sub').textContent = mlabel(m).toUpperCase() + ' SUMMARY';
+
   const activeWorkers = D.workers.filter(w => w.active !== false);
-  let tNet = 0, tPres = 0;
-  const calcs = activeWorkers.map(w => { const c = calcWorker(w, m); tNet += c.net; tPres += c.p; return { w, c }; });
+  const inactiveCount = D.workers.filter(w => w.active === false).length;
+
+  // Calc all workers with live paid status from paidStatus collection
+  let tNet = 0, tPres = 0, tWages = 0;
+  const calcs = activeWorkers.map(w => {
+    const c = calcWorker(w, m);
+    const paid = isPaid(w.id, m, c.net);
+    tNet += c.net;
+    tPres += c.p;
+    tWages += c.wages + c.otp + c.fnp;
+    return { w, c, paid };
+  });
+
+  // Stat cards
+  const unpaidCount = calcs.filter(({paid}) => !paid).length;
+  const paidCount = calcs.length - unpaidCount;
+  const tAdvances = D.advances.filter(a => a.date && a.date.startsWith(m)).reduce((s,a) => s + a.amount, 0);
+  const todayStr = today();
+  const presentToday = D.attendance.filter(a => a.date === todayStr && (a.status === 'P' || a.status === 'H')).length;
+
   const n = document.getElementById('d-net');
   n.innerHTML = tNet < 0 ? '-' + fmt(tNet) : fmt(tNet);
   n.className = 'val' + (tNet < 0 ? ' neg' : '');
-  document.getElementById('d-workers').textContent = activeWorkers.length;
-  const inactiveCount = D.workers.filter(w => w.active === false).length;
-  document.getElementById('d-workers-sub').textContent = inactiveCount > 0 ? inactiveCount + ' away' : 'all on site';
-
-  // Present today
-  const todayStr = today();
-  const presentToday = D.attendance.filter(a => a.date === todayStr && a.status === 'P').length;
-  document.getElementById('d-present').textContent = presentToday;
-  document.getElementById('d-present-sub').textContent = tPres + ' this month';
-
-  // Net sub-label
-  const activeW = D.workers.filter(w => w.active !== false);
-  const unpaidCount = activeW.filter(w => { const c = calcWorker(w, m); return !isPaid(w.id, m, c.net); }).length;
   document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' still unpaid' : 'all settled ✓';
 
-  // Extra stats
-  const tWages = calcs.reduce((s,{c}) => s + c.wages + c.otp + c.fnp, 0);
-  // Count ALL workers advances (including inactive) to match Advances tab total
-  const tAdvances = D.advances.filter(a => a.date && a.date.startsWith(m)).reduce((s,a) => s + a.amount, 0);
+  document.getElementById('d-workers').textContent = activeWorkers.length;
+  document.getElementById('d-workers-sub').textContent =
+    inactiveCount > 0
+      ? inactiveCount + ' away' + (unpaidCount > 0 ? ' · ' + unpaidCount + ' unpaid' : '')
+      : (unpaidCount > 0 ? paidCount + ' paid · ' + unpaidCount + ' pending' : 'all paid ✓');
+
+  document.getElementById('d-present').textContent = presentToday;
+  document.getElementById('d-present-sub').textContent = tPres + ' present this month';
+
   document.getElementById('d-wages').textContent = fmt(tWages);
   document.getElementById('d-advances').textContent = fmt(tAdvances);
   document.getElementById('d-unpaid').textContent = unpaidCount;
-  const totalW = activeW.length;
-  document.getElementById('d-workers-sub').textContent = unpaidCount > 0 ? (totalW - unpaidCount) + ' paid · ' + unpaidCount + ' pending' : 'all paid ✓';
+
   if (!activeWorkers.length) {
     const emp = `<div class="empty">No active workers. <a onclick="nav('labourers')">Go to Labourers</a> to activate.</div>`;
     document.getElementById('dash-table-desktop').innerHTML = emp;
     document.getElementById('dash-table-mobile').innerHTML = emp;
     return;
   }
-  const dRows = calcs.map(({w,c}) => `<tr>
+
+  const dRows = calcs.map(({w,c,paid}) => `<tr>
     <td><a class="worker-link" onclick="openWorkerProfile('${w.id}')">${w.name}</a></td>
     <td><span class="chip cp">${c.p}</span>&nbsp;<span class="chip ch">${c.h}</span>&nbsp;<span class="chip ca">${c.ab}</span></td>
-    <td>${c.otDays}${c.fnDays?` <span style="color:#4a148c;font-size:10px;font-weight:700">+${c.fnDays}FN</span>`:''}</td>
-    <td>${fmt(c.wages)}${c.fnp>0?` <span style="color:#4a148c;font-size:10px">+${fmt(c.fnp)}</span>`:''}</td>
+    <td>${c.otDays}${c.fnDays?` <span style="color:#7c3aed;font-size:10px;font-weight:700">+${c.fnDays}FN</span>`:''}</td>
+    <td>${fmt(c.wages)}${c.fnp>0?` <span style="color:#7c3aed;font-size:10px">+${fmt(c.fnp)}</span>`:''}</td>
     <td class="text-red">${c.advs>0?'-'+fmt(c.advs):'-₹0'}</td>
     <td class="text-muted">${c.carry?fmtS(c.carry):'-₹0'}</td>
-    <td>${c.net<0?'<span class="text-red">-'+fmt(c.net)+'</span>':fmt(c.net)}</td>
-    <td><span class="badge ${c.paid?'badge-paid':'badge-unpaid'}">${c.paid?'PAID':'UNPAID'}</span></td>
+    <td style="font-weight:700">${c.net<0?'<span class="text-red">-'+fmt(c.net)+'</span>':fmt(c.net)}</td>
+    <td><span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span></td>
   </tr>`).join('');
   document.getElementById('dash-table-desktop').innerHTML = `<table><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th></tr></thead><tbody>${dRows}</tbody></table>`;
-  const mCards = calcs.map(({w,c}) => `
+
+  const mCards = calcs.map(({w,c,paid}) => `
     <div class="worker-card">
       <div class="wc-top">
         <span class="wc-name" onclick="openWorkerProfile('${w.id}')" style="cursor:pointer">${w.name}</span>
-        <span class="badge ${c.paid?'badge-paid':'badge-unpaid'}">${c.paid?'PAID':'UNPAID'}</span>
+        <span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span>
       </div>
       <div class="wc-chips">
         <span class="wc-chip cp">${c.p}P</span>
         <span class="wc-chip ch">${c.h}H</span>
         <span class="wc-chip ca">${c.ab}A</span>
-        ${c.otDays?`<span class="wc-chip" style="color:var(--green)">${c.otDays}OT</span>`:''}
-        ${c.fnDays?`<span class="wc-chip" style="color:#4a148c">${c.fnDays}FN</span>`:''}
+        ${c.otDays?`<span class="wc-chip" style="color:var(--blue)">${c.otDays}OT</span>`:''}
+        ${c.fnDays?`<span class="wc-chip" style="color:#7c3aed">${c.fnDays}FN</span>`:''}
       </div>
       <div class="wc-rows">
         <div class="wc-row"><span class="wc-lbl">Wages (₹${c.wage}/day)</span><span>${fmt(c.wages)}</span></div>
