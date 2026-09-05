@@ -510,7 +510,7 @@ const firebaseConfig = {
 /* ── AUTHORISED EMAILS — ADD YOUR TEAM HERE ── */
 const ALLOWED_EMAILS = [
   "sabnamrajoria@gmail.com",
-  "gandharj1705@gmail.com"
+  "gandhraj1705@gmail.com"
 ];
 
 const app = initializeApp(firebaseConfig);
@@ -723,9 +723,49 @@ function calcWorker(w, m) {
   const otp = Math.round(otDays * wage * 0.5);
   const fnp = Math.round(fnDays * wage); // full night doubles the day = extra 1x
   const advs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(m)).reduce((s,a) => s+a.amount, 0);
-  const prevS = D.settlements.filter(s => s.wid === w.id && s.month < m).sort((a,b) => a.month.localeCompare(b.month));
-  const lastSett = prevS.length ? prevS[prevS.length-1] : null;
-  const carry = lastSett && lastSett.net < 0 ? lastSett.net : 0;
+  // Live carry forward: find the most recent previous month with data, compute its net live
+  const prevMonths = [...new Set([
+    ...D.attendance.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < m).map(a => a.date.slice(0,7)),
+    ...D.advances.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < m).map(a => a.date.slice(0,7)),
+  ])].sort((a,b) => b.localeCompare(a)); // most recent first
+  let carry = 0;
+  if (prevMonths.length) {
+    const lastMonth = prevMonths[0];
+    // Compute last month net without carry (to avoid infinite recursion)
+    const lmAtt = D.attendance.filter(a => a.wid === w.id && a.date && a.date.startsWith(lastMonth));
+    const lmP = lmAtt.filter(a => a.status === 'P').length;
+    const lmH = lmAtt.filter(a => a.status === 'H').length;
+    const lmOT = lmAtt.filter(a => a.ot).length;
+    const lmFN = lmAtt.filter(a => a.fn).length;
+    const lmWage = getWageForMonth(w, lastMonth);
+    const lmWages = Math.round((lmP + lmH * 0.5) * lmWage);
+    const lmOtp = Math.round(lmOT * lmWage * 0.5);
+    const lmFnp = Math.round(lmFN * lmWage);
+    const lmAdvs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(lastMonth)).reduce((s,a) => s + a.amount, 0);
+    // Recursively get that month's carry (one level deep only)
+    const prevPrevMonths = [...new Set([
+      ...D.attendance.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < lastMonth).map(a => a.date.slice(0,7)),
+      ...D.advances.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < lastMonth).map(a => a.date.slice(0,7)),
+    ])].sort((a,b) => b.localeCompare(a));
+    let prevCarry = 0;
+    if (prevPrevMonths.length) {
+      const ppMonth = prevPrevMonths[0];
+      const ppAtt = D.attendance.filter(a => a.wid === w.id && a.date && a.date.startsWith(ppMonth));
+      const ppP = ppAtt.filter(a => a.status === 'P').length;
+      const ppH = ppAtt.filter(a => a.status === 'H').length;
+      const ppOT = ppAtt.filter(a => a.ot).length;
+      const ppFN = ppAtt.filter(a => a.fn).length;
+      const ppWage = getWageForMonth(w, ppMonth);
+      const ppWages = Math.round((ppP + ppH * 0.5) * ppWage);
+      const ppOtp = Math.round(ppOT * ppWage * 0.5);
+      const ppFnp = Math.round(ppFN * ppWage);
+      const ppAdvs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(ppMonth)).reduce((s,a) => s + a.amount, 0);
+      const ppNet = ppWages + ppOtp + ppFnp - ppAdvs;
+      prevCarry = ppNet < 0 ? ppNet : 0;
+    }
+    const lmNet = lmWages + lmOtp + lmFnp - lmAdvs + prevCarry;
+    carry = lmNet < 0 ? lmNet : 0;
+  }
   const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
   return { p, h, ab, otDays, fnDays, wage, wages, otp, fnp, advs, carry, net };
