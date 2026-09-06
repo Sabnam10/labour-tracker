@@ -378,29 +378,15 @@ tbody tr:hover{background:#f8fafc}
             <div class="val" id="d-net">₹0</div>
             <div class="val-sub" id="d-net-sub"></div>
           </div>
-          <div class="stat-card">
-            <div class="lbl">Active Workers</div>
-            <div class="val" id="d-workers">0</div>
+          <div class="stat-card" style="border-top:3px solid var(--green)">
+            <div class="lbl">Total Wages Earned</div>
+            <div class="val" id="d-wages">₹0</div>
             <div class="val-sub" id="d-workers-sub"></div>
           </div>
-          <div class="stat-card">
-            <div class="lbl">Present Today</div>
-            <div class="val" id="d-present">0</div>
-            <div class="val-sub" id="d-present-sub"></div>
-          </div>
-        </div>
-        <div class="stat-row" style="margin-bottom:20px">
-          <div class="stat-card" style="border-top:3px solid var(--green)">
-            <div class="lbl">Total Wages</div>
-            <div class="val" id="d-wages" style="font-size:22px">₹0</div>
-          </div>
           <div class="stat-card" style="border-top:3px solid var(--red)">
-            <div class="lbl">Total Advances</div>
-            <div class="val" id="d-advances" style="font-size:22px">₹0</div>
-          </div>
-          <div class="stat-card" style="border-top:3px solid var(--orange)">
-            <div class="lbl">Unpaid Settlements</div>
-            <div class="val" id="d-unpaid" style="font-size:22px">0</div>
+            <div class="lbl">Total Advances Paid</div>
+            <div class="val" id="d-advances">₹0</div>
+            <div class="val-sub" id="d-present-sub"></div>
           </div>
         </div>
         <div class="tbl-card desktop-only"><div class="tbl-hd">WORKER BREAKDOWN</div><div id="dash-table-desktop"></div></div>
@@ -800,20 +786,13 @@ function renderDashboard() {
   const n = document.getElementById('d-net');
   n.innerHTML = tNet < 0 ? '-' + fmt(tNet) : fmt(tNet);
   n.className = 'val' + (tNet < 0 ? ' neg' : '');
-  document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' still unpaid' : 'all settled ✓';
-
-  document.getElementById('d-workers').textContent = activeWorkers.length;
-  document.getElementById('d-workers-sub').textContent =
-    inactiveCount > 0
-      ? inactiveCount + ' away' + (unpaidCount > 0 ? ' · ' + unpaidCount + ' unpaid' : '')
-      : (unpaidCount > 0 ? paidCount + ' paid · ' + unpaidCount + ' pending' : 'all paid ✓');
-
-  document.getElementById('d-present').textContent = presentToday;
-  document.getElementById('d-present-sub').textContent = tPres + ' present this month';
+  document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' unpaid · ' + paidCount + ' paid' : 'all settled ✓';
 
   document.getElementById('d-wages').textContent = fmt(tWages);
+  document.getElementById('d-workers-sub').textContent = activeWorkers.length + ' workers · ' + (inactiveCount > 0 ? inactiveCount + ' away' : 'all active');
+
   document.getElementById('d-advances').textContent = fmt(tAdvances);
-  document.getElementById('d-unpaid').textContent = unpaidCount;
+  document.getElementById('d-present-sub').textContent = 'Present today: ' + presentToday;
 
   if (!activeWorkers.length) {
     const emp = `<div class="empty">No active workers. <a onclick="nav('labourers')">Go to Labourers</a> to activate.</div>`;
