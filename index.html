@@ -257,6 +257,139 @@ tbody tr:hover{background:#f8fafc}
 .prof-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-2)}
 .prof-tbl tr:last-child td{border-bottom:none}
 
+
+
+/* ── TODAY ATTENDANCE PANEL ── */
+.today-panel{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.today-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.today-panel-title{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--muted);text-transform:uppercase}
+.today-chips{display:flex;gap:10px;flex-wrap:wrap}
+.today-chip{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.tc-p{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)}
+.tc-h{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)}
+.tc-a{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)}
+.tc-n{background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}
+.unmarked-list{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.unmarked-pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)}
+
+/* ── MONTH PROGRESS ── */
+.month-progress{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.mp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px}
+.mp-title{font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.mp-pct{font-weight:700;color:var(--accent)}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s ease}
+.mp-sub{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)}
+
+/* ── ADVANCE PROGRESS BAR ── */
+.adv-bar-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+.adv-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* ── SORT BAR ── */
+.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sort-bar .lbl{font-size:11px;font-weight:600;color:var(--muted)}
+.sort-btn{height:26px;padding:0 10px;font-size:11px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--muted);font-weight:500;box-shadow:none;display:inline-flex;align-items:center;gap:4px}
+.sort-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.sort-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── COLOR CODED ROWS ── */
+.row-paid td{background:rgba(22,163,74,0.04)}
+.row-warning td{background:rgba(217,119,6,0.05)}
+.row-danger td{background:rgba(220,38,38,0.05)}
+.row-zero td{background:#fafafa;color:var(--muted)}
+
+/* ── STICKY TABLE HEADER ── */
+.tbl-sticky thead th{position:sticky;top:0;z-index:10;box-shadow:0 1px 0 var(--border)}
+
+/* ── LAST MONTH COMPARE ── */
+.lm-compare{font-size:10px;margin-top:2px}
+.lm-up{color:var(--green)}
+.lm-down{color:var(--red)}
+.lm-same{color:var(--muted)}
+
+/* ── NOT STARTED TAG ── */
+.not-started{color:var(--muted);font-size:11px;font-style:italic}
+
+/* ── CARRY FWD BADGE ── */
+.cf-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr);white-space:nowrap}
+
+/* ── DARK MODE ── */
+.dark-mode{
+  --border:#1e293b;--border-strong:#334155;
+  --text:#f1f5f9;--text-2:#cbd5e1;--muted:#64748b;
+  --bg:#0f172a;--white:#1e293b;
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.1);--green-bdr:rgba(74,222,128,0.2);
+  --amber:#fbbf24;--amber-bg:rgba(251,191,36,0.1);--amber-bdr:rgba(251,191,36,0.2);
+  --red:#f87171;--red-bg:rgba(248,113,113,0.1);--red-bdr:rgba(248,113,113,0.2);
+  --orange:#fb923c;--orange-bg:rgba(251,146,60,0.1);--orange-bdr:rgba(251,146,60,0.2);
+  --blue:#60a5fa;--blue-bg:rgba(96,165,250,0.1);
+  --purple:#c4b5fd;--purple-bg:rgba(196,181,253,0.1);
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.3);
+  --shadow:0 4px 6px rgba(0,0,0,0.4);
+  background:var(--bg);color:var(--text);
+}
+.dark-mode .topbar{background:#1e293b;border-color:#334155}
+.dark-mode .sync-bar{background:#1e293b;border-color:#334155}
+.dark-mode .tbl-card{background:#1e293b;border-color:#334155}
+.dark-mode .tbl-hd{background:#1e293b;border-color:#334155}
+.dark-mode thead th{background:#0f172a;color:#94a3b8;border-color:#334155}
+.dark-mode tbody td{border-color:#1e293b}
+.dark-mode tbody tr:hover{background:#0f172a}
+.dark-mode input,.dark-mode select{background:#0f172a;border-color:#334155;color:#f1f5f9}
+.dark-mode button{background:#1e293b;border-color:#334155;color:#f1f5f9}
+.dark-mode button:hover{background:#0f172a}
+.dark-mode .btn-dark{background:#f97316;border-color:#f97316;color:#fff}
+.dark-mode .btn-accent{background:#f97316;border-color:#f97316;color:#fff}
+.dark-mode .stat-card{background:#1e293b;border-color:#334155}
+.dark-mode .modal{background:#1e293b}
+.dark-mode .modal-head{background:#1e293b;border-color:#334155}
+.dark-mode .modal-body{background:#1e293b}
+.dark-mode .modal-foot{background:#0f172a;border-color:#334155}
+.dark-mode .worker-card{background:#1e293b;border-color:#334155}
+.dark-mode .att-card{background:#1e293b;border-color:#334155}
+.dark-mode .adv-card{background:#1e293b;border-color:#334155}
+.dark-mode .prof-stat{background:#0f172a;border-color:#334155}
+.dark-mode .filter-row input,.dark-mode .filter-row select{background:#0f172a;border-color:#334155}
+.dark-mode .login-card{background:#1e293b}
+.dark-mode .wc-rows{border-color:#334155}
+.dark-mode .wc-row{border-color:#334155}
+.dark-mode .bulk-worker-row{border-color:#334155}
+.dark-mode .bulk-adv-row{border-color:#334155}
+.dark-mode .att-tog{background:#0f172a;border-color:#334155;color:#94a3b8}
+.dark-mode .rupee-box,.dark-mode .amt-box{background:#0f172a;border-color:#334155}
+.dark-mode .rupee-box .sym,.dark-mode .amt-box .sym{background:#0f172a;border-color:#334155;color:#94a3b8}
+.dark-mode .rupee-box input,.dark-mode .amt-box input{background:#0f172a;color:#f1f5f9}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;bottom:calc(var(--bottom-nav-h) + 16px);left:50%;transform:translateX(-50%);z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+@media(min-width:701px){.toast-container{bottom:24px}}
+.toast{background:#0f172a;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,0.25);pointer-events:all;animation:slideUp .25s ease;white-space:nowrap}
+.dark-mode .toast{background:#f97316}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.toast button{background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:12px;font-weight:600;padding:0;height:auto;box-shadow:none;text-decoration:underline}
+.toast button:hover{color:#fff;background:none}
+
+/* ── ADVANCE LIMIT WARNING ── */
+.adv-warning{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);padding:2px 8px;border-radius:20px;margin-left:6px}
+.adv-danger{color:var(--red);background:var(--red-bg);border-color:var(--red-bdr)}
+
+/* ── PRINT ── */
+@media print{
+  .sidebar,.bottom-nav,.topbar,.sync-bar,.topbar-right,.act,.btn-dark,.btn-accent,.btn-sm,.btn-icon,.modal-overlay{display:none!important}
+  .main{overflow:visible!important}
+  .content{overflow:visible!important;padding:0!important}
+  .tbl-card{box-shadow:none!important;border:1px solid #ccc!important}
+  body{overflow:visible!important}
+  .app{height:auto!important;overflow:visible!important}
+  .page{display:block!important}
+  #pg-dashboard.page:not(.active),#pg-attendance.page:not(.active),#pg-advances.page:not(.active),#pg-settlements.page:not(.active),#pg-labourers.page:not(.active){display:none!important}
+  .stat-row{display:grid!important}
+  .print-header{display:block!important}
+}
+.print-header{display:none;margin-bottom:16px}
+.print-header h2{font-size:18px;font-weight:700}
+.print-header p{font-size:12px;color:#666}
+
 /* ── RESPONSIVE ── */
 @media(max-width:700px){
   .sidebar{display:none}
@@ -307,6 +440,13 @@ tbody tr:hover{background:#f8fafc}
   </div>
 </div>
 
+<!-- TOAST -->
+<div class="toast-container" id="toast-container"></div>
+<div class="print-header" id="print-header">
+  <h2 id="print-title">Labour Tracker — Adita Construction</h2>
+  <p id="print-subtitle"></p>
+</div>
+
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal" id="modal-box"></div>
@@ -342,6 +482,16 @@ tbody tr:hover{background:#f8fafc}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Labourers
       </div>
     </nav>
+    <div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:6px">
+      <button onclick="toggleDarkMode()" id="dark-btn" title="Toggle dark mode" style="flex:1;height:32px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.6);font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span id="dark-label">Dark</span>
+      </button>
+      <button onclick="printCurrentPage()" title="Print / Export PDF" style="flex:1;height:32px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.6);font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        <span>Print</span>
+      </button>
+    </div>
     <div class="sb-user">
       <div class="sb-avatar" id="sb-avatar">?</div>
       <div class="sb-user-info">
@@ -372,6 +522,31 @@ tbody tr:hover{background:#f8fafc}
       <!-- DASHBOARD -->
       <div id="pg-dashboard" class="page active">
         <div class="filter-row"><span class="lbl">Month:</span><input type="month" id="dash-month" style="width:160px;max-width:100%"></div>
+
+        <!-- TODAY PANEL — only shows for current month -->
+        <div class="today-panel" id="today-panel" style="display:none">
+          <div class="today-panel-head">
+            <span class="today-panel-title">📅 Today's Attendance</span>
+            <button class="btn-accent" style="height:28px;font-size:11px" onclick="nav('attendance')">Mark Today →</button>
+          </div>
+          <div class="today-chips" id="today-chips"></div>
+          <div class="unmarked-list" id="unmarked-list"></div>
+        </div>
+
+        <!-- MONTH PROGRESS -->
+        <div class="month-progress" id="month-progress">
+          <div class="mp-head">
+            <span class="mp-title">📊 Month Progress</span>
+            <span class="mp-pct" id="mp-pct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="mp-fill" style="width:0%"></div></div>
+          <div class="mp-sub">
+            <span id="mp-left"></span>
+            <span id="mp-right"></span>
+          </div>
+        </div>
+
+        <!-- STAT CARDS -->
         <div class="stat-row">
           <div class="stat-card">
             <div class="lbl">Total Net Payable</div>
@@ -389,9 +564,18 @@ tbody tr:hover{background:#f8fafc}
             <div class="val-sub" id="d-present-sub"></div>
           </div>
         </div>
-        <div class="tbl-card desktop-only"><div class="tbl-hd">WORKER BREAKDOWN</div><div id="dash-table-desktop"></div></div>
+
+        <!-- WORKER BREAKDOWN with sort -->
+        <div class="sort-bar">
+          <span class="lbl">Sort:</span>
+          <button class="sort-btn active" id="sort-net" onclick="setSort('net')">Net Payable ↓</button>
+          <button class="sort-btn" id="sort-adv" onclick="setSort('adv')">Advances ↓</button>
+          <button class="sort-btn" id="sort-abs" onclick="setSort('absent')">Most Absent</button>
+          <button class="sort-btn" id="sort-name" onclick="setSort('name')">Name A–Z</button>
+        </div>
+        <div class="tbl-card desktop-only"><div class="tbl-hd" id="d-breakdown-hd">WORKER BREAKDOWN</div><div id="dash-table-desktop" class="tbl-sticky"></div></div>
         <div class="mobile-only">
-          <div class="tbl-hd" style="background:var(--white);border:1px solid var(--border);border-radius:4px 4px 0 0">WORKER BREAKDOWN</div>
+          <div class="tbl-hd" style="background:var(--white);border:1px solid var(--border);border-radius:4px 4px 0 0" id="d-breakdown-hd-m">WORKER BREAKDOWN</div>
           <div id="dash-table-mobile"></div>
         </div>
       </div>
@@ -646,6 +830,9 @@ function openModal(html) { document.getElementById('modal-box').innerHTML = html
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); document.getElementById('modal-box').innerHTML = ''; }
 document.getElementById('modal-overlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 window.closeModal = closeModal;
+window.closeIco = closeIco;
+window.wname = wname;
+window.mlabel = mlabel;
 
 /* ── NAV ── */
 const pageNames = ['dashboard','attendance','advances','settlements','labourers'];
@@ -681,7 +868,7 @@ function refreshCurrentPage() {
 function buildActions(page) {
   const ta = document.getElementById('topbar-actions');
   if (page==='attendance') {
-    ta.innerHTML=`<button onclick="openBulkMark()">${bulkIco()} <span class="btn-label">Bulk Mark</span> <span id="bulk-cnt" style="background:rgba(249,115,22,0.15);color:var(--accent);padding:1px 8px;border-radius:20px;font-size:10px;margin-left:2px;font-weight:700">${D.workers.length}</span></button><button class="btn-accent" onclick="openMarkModal()">${plusIco()} <span class="btn-label">Mark</span></button>`;
+    ta.innerHTML=`<button onclick="copyYesterday()" title="Copy yesterday's attendance"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> <span class="btn-label">Copy Yesterday</span></button><button onclick="openBulkMark()">${bulkIco()} <span class="btn-label">Bulk Mark</span> <span id="bulk-cnt" style="background:rgba(249,115,22,0.15);color:var(--accent);padding:1px 8px;border-radius:20px;font-size:10px;margin-left:2px;font-weight:700">${D.workers.length}</span></button><button class="btn-accent" onclick="openMarkModal()">${plusIco()} <span class="btn-label">Mark</span></button>`;
   } else if (page==='advances') {
     ta.innerHTML=`<button onclick="openBulkAdv()">${bulkIco()} <span class="btn-label">Bulk</span></button><button class="btn-accent" onclick="openAdvModal()">${plusIco()} <span class="btn-label">Record</span></button>`;
   } else if (page==='settlements') {
@@ -758,39 +945,91 @@ function calcWorker(w, m) {
 }
 
 /* ── DASHBOARD ── */
+let currentSort = 'net';
+function setSort(s) {
+  currentSort = s;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('sort-' + s);
+  if (btn) btn.classList.add('active');
+  renderDashboard();
+}
+
 function renderDashboard() {
   const m = document.getElementById('dash-month').value || thisMonth();
   document.getElementById('page-sub').textContent = mlabel(m).toUpperCase() + ' SUMMARY';
 
   const activeWorkers = D.workers.filter(w => w.active !== false);
   const inactiveCount = D.workers.filter(w => w.active === false).length;
+  const isCurrentMonth = m === thisMonth();
+  const todayStr = today();
 
-  // Calc all workers with live paid status from paidStatus collection
-  let tNet = 0, tPres = 0, tWages = 0;
+  // ── TODAY PANEL ──
+  const todayPanel = document.getElementById('today-panel');
+  if (isCurrentMonth && activeWorkers.length) {
+    todayPanel.style.display = 'block';
+    const todayAtt = D.attendance.filter(a => a.date === todayStr);
+    const tP = todayAtt.filter(a => a.status==='P').length;
+    const tH = todayAtt.filter(a => a.status==='H').length;
+    const tA = todayAtt.filter(a => a.status==='A').length;
+    const markedIds = todayAtt.map(a => a.wid);
+    const unmarked = activeWorkers.filter(w => !markedIds.includes(w.id));
+    document.getElementById('today-chips').innerHTML = `
+      <div class="today-chip tc-p"><span>${tP}</span> Present</div>
+      <div class="today-chip tc-h"><span>${tH}</span> Half Day</div>
+      <div class="today-chip tc-a"><span>${tA}</span> Absent</div>
+      ${unmarked.length ? `<div class="today-chip tc-n"><span>${unmarked.length}</span> Not marked</div>` : ''}
+    `;
+    document.getElementById('unmarked-list').innerHTML = unmarked.length
+      ? `<div style="font-size:11px;color:var(--muted);font-weight:600;width:100%;margin-bottom:4px">Not yet marked today:</div>` +
+        unmarked.map(w => `<span class="unmarked-pill">${w.name}</span>`).join('')
+      : `<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ All workers marked for today</div>`;
+  } else {
+    todayPanel.style.display = 'none';
+  }
+
+  // ── MONTH PROGRESS ──
+  const daysInM = new Date(parseInt(m.slice(0,4)), parseInt(m.slice(5,7)), 0).getDate();
+  const daysPassed = isCurrentMonth ? Math.min(new Date().getDate(), daysInM) : daysInM;
+  const pct = Math.round((daysPassed / daysInM) * 100);
+  const attDaysMarked = [...new Set(D.attendance.filter(a => a.date && a.date.startsWith(m)).map(a => a.date))].length;
+  document.getElementById('mp-pct').textContent = pct + '%';
+  document.getElementById('mp-fill').style.width = pct + '%';
+  document.getElementById('mp-left').textContent = 'Day ' + daysPassed + ' of ' + daysInM;
+  document.getElementById('mp-right').textContent = attDaysMarked + ' days attendance entered';
+
+  // ── CALC ALL WORKERS ──
+  let tNet = 0, tWages = 0;
+  const lastM = (() => { const d = new Date(m+'-01'); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); })();
   const calcs = activeWorkers.map(w => {
     const c = calcWorker(w, m);
+    const lc = calcWorker(w, lastM); // last month for comparison
     const paid = isPaid(w.id, m, c.net);
     tNet += c.net;
-    tPres += c.p;
     tWages += c.wages + c.otp + c.fnp;
-    return { w, c, paid };
+    return { w, c, lc, paid };
   });
 
-  // Stat cards
+  // ── SORT ──
+  calcs.sort((a, b) => {
+    if (currentSort === 'net') return b.c.net - a.c.net;
+    if (currentSort === 'adv') return b.c.advs - a.c.advs;
+    if (currentSort === 'absent') return b.c.ab - a.c.ab;
+    if (currentSort === 'name') return a.w.name.localeCompare(b.w.name);
+    return 0;
+  });
+
   const unpaidCount = calcs.filter(({paid}) => !paid).length;
   const paidCount = calcs.length - unpaidCount;
   const tAdvances = D.advances.filter(a => a.date && a.date.startsWith(m)).reduce((s,a) => s + a.amount, 0);
-  const todayStr = today();
-  const presentToday = D.attendance.filter(a => a.date === todayStr && (a.status === 'P' || a.status === 'H')).length;
+  const presentToday = D.attendance.filter(a => a.date === todayStr && (a.status==='P'||a.status==='H')).length;
 
+  // ── STAT CARDS ──
   const n = document.getElementById('d-net');
   n.innerHTML = tNet < 0 ? '-' + fmt(tNet) : fmt(tNet);
   n.className = 'val' + (tNet < 0 ? ' neg' : '');
   document.getElementById('d-net-sub').textContent = unpaidCount > 0 ? unpaidCount + ' unpaid · ' + paidCount + ' paid' : 'all settled ✓';
-
   document.getElementById('d-wages').textContent = fmt(tWages);
   document.getElementById('d-workers-sub').textContent = activeWorkers.length + ' workers · ' + (inactiveCount > 0 ? inactiveCount + ' away' : 'all active');
-
   document.getElementById('d-advances').textContent = fmt(tAdvances);
   document.getElementById('d-present-sub').textContent = 'Present today: ' + presentToday;
 
@@ -801,40 +1040,87 @@ function renderDashboard() {
     return;
   }
 
-  const dRows = calcs.map(({w,c,paid}) => `<tr>
-    <td><a class="worker-link" onclick="openWorkerProfile('${w.id}')">${w.name}</a></td>
-    <td><span class="chip cp">${c.p}</span>&nbsp;<span class="chip ch">${c.h}</span>&nbsp;<span class="chip ca">${c.ab}</span></td>
-    <td>${c.otDays}${c.fnDays?` <span style="color:#7c3aed;font-size:10px;font-weight:700">+${c.fnDays}FN</span>`:''}</td>
-    <td>${fmt(c.wages)}${c.fnp>0?` <span style="color:#7c3aed;font-size:10px">+${fmt(c.fnp)}</span>`:''}</td>
-    <td class="text-red">${c.advs>0?'-'+fmt(c.advs):'-₹0'}</td>
-    <td class="text-muted">${c.carry?fmtS(c.carry):'-₹0'}</td>
-    <td style="font-weight:700">${c.net<0?'<span class="text-red">-'+fmt(c.net)+'</span>':fmt(c.net)}</td>
-    <td><span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span></td>
-  </tr>`).join('');
-  document.getElementById('dash-table-desktop').innerHTML = `<table><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th></tr></thead><tbody>${dRows}</tbody></table>`;
+  const dRows = calcs.map(({w,c,lc,paid}) => {
+    const notStarted = c.p===0 && c.h===0 && c.ab===0 && c.otDays===0;
+    const isOverpaid = c.advs > c.wages && c.wages > 0;
+    const isWarning = !isOverpaid && c.wages > 0 && (c.advs/c.wages) >= 0.8;
+    const rowClass = paid ? 'row-paid' : isOverpaid ? 'row-danger' : isWarning ? 'row-warning' : notStarted ? 'row-zero' : '';
+    const advPct = c.wages > 0 ? Math.min(c.advs/c.wages, 1) : 0;
+    const barColor = isOverpaid ? 'var(--red)' : isWarning ? 'var(--amber)' : 'var(--green)';
+    const advBar = c.wages > 0 ? `<div class="adv-bar-wrap"><div class="adv-bar-fill" style="width:${Math.round(advPct*100)}%;background:${barColor}"></div></div>` : '';
+    const carryBadge = c.carry < 0 ? `<span class="cf-badge">CF ${fmtS(c.carry)}</span>` : '-₹0';
+    // Last month comparison
+    let lmCompare = '';
+    if (lc.net !== 0 || c.net !== 0) {
+      const diff = c.net - lc.net;
+      if (diff > 0) lmCompare = `<div class="lm-compare lm-up">▲ ${fmt(diff)} vs last month</div>`;
+      else if (diff < 0) lmCompare = `<div class="lm-compare lm-down">▼ ${fmt(diff)} vs last month</div>`;
+      else lmCompare = `<div class="lm-compare lm-same">= same as last month</div>`;
+    }
+    return `<tr class="${rowClass}">
+    <td>
+      <a class="worker-link" onclick="openWorkerProfile('${w.id}')">${w.name}</a>
+      ${c.carry<0?`<div style="margin-top:2px"><span class="cf-badge">CF ${fmtS(c.carry)}</span></div>`:''}
+    </td>
+    <td>${notStarted ? '<span class="not-started">Not started</span>' : `<span class="chip cp">${c.p}</span>&nbsp;<span class="chip ch">${c.h}</span>&nbsp;<span class="chip ca">${c.ab}</span>`}</td>
+    <td>${c.otDays||'—'}${c.fnDays?` <span style="color:#7c3aed;font-size:10px;font-weight:700">+${c.fnDays}FN</span>`:''}</td>
+    <td>${notStarted ? '<span class="not-started">—</span>' : fmt(c.wages)}${c.fnp>0?` <span style="color:#7c3aed;font-size:10px">+${fmt(c.fnp)}</span>`:''}</td>
+    <td>${c.advs>0?'<span class="text-red">-'+fmt(c.advs)+'</span>':'-₹0'} ${advBar}</td>
+    <td>${carryBadge}</td>
+    <td style="font-weight:700">
+      ${notStarted ? '<span class="not-started">—</span>' : c.net<0?'<span class="text-red">-'+fmt(c.net)+'</span>':fmt(c.net)}
+      ${lmCompare}
+    </td>
+    <td>
+      <span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span>
+      ${advWarning(c.wages, c.advs)}
+    </td>
+  </tr>`;}).join('');
+  document.getElementById('dash-table-desktop').innerHTML = `<div style="overflow-x:auto"><table class="tbl-sticky"><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances (%)</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th></tr></thead><tbody>${dRows}</tbody></table></div>`;
 
-  const mCards = calcs.map(({w,c,paid}) => `
-    <div class="worker-card">
+  const mCards = calcs.map(({w,c,lc,paid}) => {
+    const notStarted = c.p===0 && c.h===0 && c.ab===0;
+    const isOverpaid = c.advs > c.wages && c.wages > 0;
+    const isWarning = !isOverpaid && c.wages > 0 && (c.advs/c.wages) >= 0.8;
+    const borderColor = paid ? 'var(--green)' : isOverpaid ? 'var(--red)' : isWarning ? 'var(--amber)' : 'var(--border)';
+    const diff = c.net - lc.net;
+    const lmText = (lc.net!==0||c.net!==0) ? (diff>0?`▲ ${fmt(diff)} vs last mo`:(diff<0?`▼ ${fmt(Math.abs(diff))} vs last mo`:'= same as last mo')) : '';
+    const lmColor = diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
+    return `
+    <div class="worker-card" style="border-left:3px solid ${borderColor}">
       <div class="wc-top">
-        <span class="wc-name" onclick="openWorkerProfile('${w.id}')" style="cursor:pointer">${w.name}</span>
-        <span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span>
+        <div>
+          <span class="wc-name" onclick="openWorkerProfile('${w.id}')" style="cursor:pointer">${w.name}</span>
+          ${c.carry<0?`<div style="margin-top:2px"><span class="cf-badge" style="font-size:9px">CF ${fmtS(c.carry)}</span></div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span>
+          ${advWarning(c.wages, c.advs)}
+        </div>
       </div>
       <div class="wc-chips">
-        <span class="wc-chip cp">${c.p}P</span>
-        <span class="wc-chip ch">${c.h}H</span>
-        <span class="wc-chip ca">${c.ab}A</span>
-        ${c.otDays?`<span class="wc-chip" style="color:var(--blue)">${c.otDays}OT</span>`:''}
-        ${c.fnDays?`<span class="wc-chip" style="color:#7c3aed">${c.fnDays}FN</span>`:''}
+        ${notStarted ? '<span class="not-started">No attendance this month</span>' : `
+          <span class="wc-chip cp">${c.p}P</span>
+          <span class="wc-chip ch">${c.h}H</span>
+          <span class="wc-chip ca">${c.ab}A</span>
+          ${c.otDays?`<span class="wc-chip" style="color:var(--blue)">${c.otDays}OT</span>`:''}
+          ${c.fnDays?`<span class="wc-chip" style="color:#7c3aed">${c.fnDays}FN</span>`:''}
+        `}
       </div>
       <div class="wc-rows">
-        <div class="wc-row"><span class="wc-lbl">Wages (₹${c.wage}/day)</span><span>${fmt(c.wages)}</span></div>
+        <div class="wc-row"><span class="wc-lbl">Wages (₹${c.wage}/day)</span><span>${notStarted?'—':fmt(c.wages)}</span></div>
         ${c.otp>0?`<div class="wc-row"><span class="wc-lbl">OT Pay</span><span class="text-green">+${fmt(c.otp)}</span></div>`:''}
         ${c.fnp>0?`<div class="wc-row"><span class="wc-lbl">Full Night Pay</span><span style="color:#4a148c">+${fmt(c.fnp)}</span></div>`:''}
         <div class="wc-row"><span class="wc-lbl">Advances</span><span class="text-red">${c.advs>0?'-'+fmt(c.advs):'-₹0'}</span></div>
         ${c.carry?`<div class="wc-row"><span class="wc-lbl">Carry Fwd</span><span>${fmtS(c.carry)}</span></div>`:''}
-        <div class="wc-row net"><span>Net Payable</span><span class="${c.net<0?'text-red':''}">${c.net<0?'-':''} ${fmt(c.net)}</span></div>
+        <div class="wc-row net"><span>Net Payable</span>
+          <div style="text-align:right">
+            <span class="${c.net<0?'text-red':''}">${notStarted?'—':(c.net<0?'-':'')+fmt(c.net)}</span>
+            ${lmText?`<div style="font-size:10px;color:${lmColor};margin-top:1px">${lmText}</div>`:''}
+          </div>
+        </div>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
   document.getElementById('dash-table-mobile').innerHTML = mCards;
 }
 
@@ -891,8 +1177,12 @@ function renderAttendance() {
 }
 
 window.delAtt = async (id) => {
-  if (!confirm('Delete?')) return;
+  const rec = D.attendance.find(a => a.id === id);
+  if (!rec) return;
   await fsDel('attendance', id);
+  showToast('Attendance deleted', async () => {
+    await fsSet('attendance', id, { wid:rec.wid, date:rec.date, status:rec.status, ot:rec.ot||false, fn:rec.fn||false, note:rec.note||'' });
+  });
 };
 
 window.openMarkModal = (editId) => {
@@ -1090,7 +1380,14 @@ function renderAdvances() {
   document.getElementById('adv-body-mobile').innerHTML = mCards;
 }
 
-window.delAdv = async (id) => { if (!confirm('Delete?')) return; await fsDel('advances', id); };
+window.delAdv = async (id) => {
+  const rec = D.advances.find(a => a.id === id);
+  if (!rec) return;
+  await fsDel('advances', id);
+  showToast('Advance deleted', async () => {
+    await fsSet('advances', id, { wid:rec.wid, date:rec.date, amount:rec.amount, note:rec.note||'' });
+  });
+};
 
 window.openAdvModal = (editId) => {
   const r = editId ? D.advances.find(x => x.id === editId) : null;
@@ -1196,8 +1493,47 @@ window.togglePaid = async (wid, month, currentNet) => {
   }
   const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
   const currentPaid = existing ? existing.paid : false;
+  if (!currentPaid) {
+    // Ask for payment note when marking paid
+    openModal(`
+      <div class="modal-head"><h3>Mark as Paid</h3><button class="modal-close" onclick="closeModal()">${closeIco()}</button></div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Recording payment for <b>${wname(wid)}</b> — ${mlabel(month)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="fg"><label>Payment mode</label>
+            <select id="pay-mode">
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Partial">Partial</option>
+            </select>
+          </div>
+          <div class="fg"><label>Amount paid (₹)</label><input id="pay-amt" type="number" placeholder="${Math.abs(Math.round(currentNet))}"></div>
+        </div>
+        <div class="fg"><label>Note (optional)</label><input id="pay-note" placeholder="e.g. Paid via GPay to 9876543210"></div>
+      </div>
+      <div class="modal-foot">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="btn-accent" onclick="confirmPaid('${wid}','${month}',${currentNet})">Confirm Paid</button>
+      </div>`);
+  } else {
+    const id = existing ? existing.id : uid();
+    closeModal();
+    await fsSet('paidStatus', id, { wid, month, paid: false, note: '', mode: '' });
+    showToast('Marked as unpaid');
+  }
+};
+
+window.confirmPaid = async (wid, month, currentNet) => {
+  const mode = document.getElementById('pay-mode').value;
+  const amt = document.getElementById('pay-amt').value;
+  const note = document.getElementById('pay-note').value.trim();
+  const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
   const id = existing ? existing.id : uid();
-  await fsSet('paidStatus', id, { wid, month, paid: !currentPaid });
+  closeModal();
+  await fsSet('paidStatus', id, { wid, month, paid: true, mode, amt: amt||'', note });
+  showToast('✓ Marked as paid · ' + mode);
 };
 
 function renderSettlements() {
@@ -1226,6 +1562,7 @@ function renderSettlements() {
           ? `<span class="badge badge-paid" style="background:#dcfce7;color:#15803d" title="Auto: advances covered wages">✓ AUTO-PAID</span>`
           : `<span class="badge badge-paid">PAID</span>`)
       : `<span class="badge badge-unpaid">UNPAID</span>`;
+    const paidNote = getPaidNote(r.wid, m);
     return `<tr>
     <td><a class="worker-link" onclick="openWorkerProfile('${r.wid}')">${r.name}</a></td>
     <td>${fmt(r.wages)}</td>
@@ -1234,7 +1571,7 @@ function renderSettlements() {
     <td class="text-red">${r.advs>0?'-'+fmt(r.advs):'-₹0'}</td>
     <td class="text-muted">${r.carry?fmtS(r.carry):'—'}</td>
     <td style="font-weight:700">${fmtS(r.net)}</td>
-    <td>${paidBadge}</td>
+    <td><div>${paidBadge}${paidNote}</div></td>
     <td><div class="act">
       <button class="btn-icon btn-sm" onclick="openWorkerProfile('${r.wid}')" title="View profile">${eyeIco()}</button>
       <button class="btn-icon btn-sm" title="${r.paid?'Mark Unpaid':'Mark Paid'}" onclick="togglePaid('${r.wid}','${m}',${r.net})">${checkIco()}</button>
@@ -1251,6 +1588,7 @@ function renderSettlements() {
         <span class="badge ${r.paid?'badge-paid':'badge-unpaid'}" onclick="togglePaid('${r.wid}','${m}',${r.net})" style="cursor:pointer">
           ${r.paid?(isAutoPaid?'✓ AUTO-PAID':'PAID'):'UNPAID'}
         </span>
+        ${getPaidNote(r.wid, m)?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${getPaidNote(r.wid,m)}</div>`:''}
       </div>
       <div class="wc-rows">
         <div class="wc-row"><span class="wc-lbl">Wages</span><span>${fmt(r.wages)}</span></div>
@@ -1535,8 +1873,152 @@ window.openWorkerProfile = (wid, profileMonth) => {
     </div>`);
 };
 
+
+
+/* ── TODAY ATTENDANCE PANEL ── */
+.today-panel{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.today-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.today-panel-title{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--muted);text-transform:uppercase}
+.today-chips{display:flex;gap:10px;flex-wrap:wrap}
+.today-chip{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.tc-p{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)}
+.tc-h{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)}
+.tc-a{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)}
+.tc-n{background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}
+.unmarked-list{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.unmarked-pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)}
+
+/* ── MONTH PROGRESS ── */
+.month-progress{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.mp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px}
+.mp-title{font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.mp-pct{font-weight:700;color:var(--accent)}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s ease}
+.mp-sub{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)}
+
+/* ── ADVANCE PROGRESS BAR ── */
+.adv-bar-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
+.adv-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* ── SORT BAR ── */
+.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sort-bar .lbl{font-size:11px;font-weight:600;color:var(--muted)}
+.sort-btn{height:26px;padding:0 10px;font-size:11px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--muted);font-weight:500;box-shadow:none;display:inline-flex;align-items:center;gap:4px}
+.sort-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+.sort-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── COLOR CODED ROWS ── */
+.row-paid td{background:rgba(22,163,74,0.04)}
+.row-warning td{background:rgba(217,119,6,0.05)}
+.row-danger td{background:rgba(220,38,38,0.05)}
+.row-zero td{background:#fafafa;color:var(--muted)}
+
+/* ── STICKY TABLE HEADER ── */
+.tbl-sticky thead th{position:sticky;top:0;z-index:10;box-shadow:0 1px 0 var(--border)}
+
+/* ── LAST MONTH COMPARE ── */
+.lm-compare{font-size:10px;margin-top:2px}
+.lm-up{color:var(--green)}
+.lm-down{color:var(--red)}
+.lm-same{color:var(--muted)}
+
+/* ── NOT STARTED TAG ── */
+.not-started{color:var(--muted);font-size:11px;font-style:italic}
+
+/* ── CARRY FWD BADGE ── */
+.cf-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr);white-space:nowrap}
+
+/* ── DARK MODE ── */
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('adita_dark', isDark ? '1' : '0');
+  document.getElementById('dark-label').textContent = isDark ? 'Light' : 'Dark';
+}
+function initDarkMode() {
+  const pref = localStorage.getItem('adita_dark');
+  if (pref === '1') {
+    document.body.classList.add('dark-mode');
+    const lbl = document.getElementById('dark-label');
+    if (lbl) lbl.textContent = 'Light';
+  }
+}
+
+/* ── TOAST ── */
+let toastTimer = null;
+let undoFn = null;
+function showToast(msg, undoCallback) {
+  const tc = document.getElementById('toast-container');
+  clearTimeout(toastTimer);
+  const undoBtn = undoCallback ? `<button onclick="runUndo()">Undo</button>` : '';
+  undoFn = undoCallback || null;
+  tc.innerHTML = `<div class="toast">${msg}${undoBtn}</div>`;
+  toastTimer = setTimeout(() => { tc.innerHTML = ''; undoFn = null; }, undoCallback ? 5000 : 2500);
+}
+function runUndo() {
+  if (undoFn) { undoFn(); undoFn = null; }
+  document.getElementById('toast-container').innerHTML = '';
+  clearTimeout(toastTimer);
+}
+
+/* ── COPY YESTERDAY'S ATTENDANCE ── */
+window.copyYesterday = async () => {
+  const d = document.getElementById('att-date').value || today();
+  const dObj = new Date(d);
+  dObj.setDate(dObj.getDate() - 1);
+  const yesterday = dObj.toISOString().split('T')[0];
+  const yRecs = D.attendance.filter(a => a.date === yesterday);
+  if (!yRecs.length) { showToast('No attendance found for ' + yesterday); return; }
+  const existing = D.attendance.filter(a => a.date === d);
+  if (existing.length) {
+    if (!confirm('Attendance for ' + d + ' already exists. Overwrite with yesterday\'s?')) return;
+  }
+  setSyncStatus('syncing', 'Copying...');
+  const batch = writeBatch(db);
+  // Delete existing for today first
+  existing.forEach(a => batch.delete(doc(db, 'attendance', a.id)));
+  // Copy from yesterday
+  yRecs.forEach(r => {
+    batch.set(doc(db, 'attendance', uid()), {
+      wid: r.wid, date: d, status: r.status, ot: r.ot||false, fn: r.fn||false, note: '', _updated: serverTimestamp()
+    });
+  });
+  await batch.commit();
+  setSyncStatus('ok', 'Copied');
+  showToast('✓ Copied ' + yRecs.length + ' records from ' + yesterday);
+};
+
+/* ── PRINT / EXPORT PDF ── */
+function printCurrentPage() {
+  const m = document.getElementById('dash-month')?.value || thisMonth();
+  document.getElementById('print-title').textContent = 'Labour Tracker — Adita Construction';
+  document.getElementById('print-subtitle').textContent = mlabel(m) + ' · Generated ' + new Date().toLocaleDateString('en-IN');
+  window.print();
+}
+
+/* ── ADVANCE WARNING — show in dashboard worker rows ── */
+function advWarning(wages, advs) {
+  if (!wages) return '';
+  const pct = advs / wages;
+  if (pct >= 1) return '<span class="adv-warning adv-danger">⚠ Overpaid</span>';
+  if (pct >= 0.8) return '<span class="adv-warning">⚠ 80%+ advance</span>';
+  return '';
+}
+
+/* ── SETTLEMENT NOTES DISPLAY ── */
+function getPaidNote(wid, month) {
+  const ps = D.paidStatus.find(p => p.wid === wid && p.month === month);
+  if (!ps || !ps.paid) return '';
+  let note = ps.mode || '';
+  if (ps.amt) note += ' · ₹' + parseFloat(ps.amt).toLocaleString('en-IN');
+  if (ps.note) note += ' · ' + ps.note;
+  return note ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">${note}</div>` : '';
+}
+
+
 /* ── INIT ── */
 function initApp() {
+  initDarkMode();
   // Only set defaults if not already set
   const dm = document.getElementById('dash-month');
   const ad = document.getElementById('att-date');
