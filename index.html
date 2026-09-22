@@ -1901,59 +1901,7 @@ window.openWorkerProfile = (wid, profileMonth) => {
 
 
 
-/* ── TODAY ATTENDANCE PANEL ── */
-.today-panel{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
-.today-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.today-panel-title{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--muted);text-transform:uppercase}
-.today-chips{display:flex;gap:10px;flex-wrap:wrap}
-.today-chip{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
-.tc-p{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)}
-.tc-h{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)}
-.tc-a{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)}
-.tc-n{background:#f1f5f9;color:var(--muted);border:1px solid var(--border)}
-.unmarked-list{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
-.unmarked-pill{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)}
 
-/* ── MONTH PROGRESS ── */
-.month-progress{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
-.mp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px}
-.mp-title{font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
-.mp-pct{font-weight:700;color:var(--accent)}
-.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
-.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s ease}
-.mp-sub{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)}
-
-/* ── ADVANCE PROGRESS BAR ── */
-.adv-bar-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px}
-.adv-bar-fill{height:100%;border-radius:3px;transition:width .3s}
-
-/* ── SORT BAR ── */
-.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.sort-bar .lbl{font-size:11px;font-weight:600;color:var(--muted)}
-.sort-btn{height:26px;padding:0 10px;font-size:11px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;color:var(--muted);font-weight:500;box-shadow:none;display:inline-flex;align-items:center;gap:4px}
-.sort-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
-.sort-btn:hover{border-color:var(--accent);color:var(--accent)}
-
-/* ── COLOR CODED ROWS ── */
-.row-paid td{background:rgba(22,163,74,0.04)}
-.row-warning td{background:rgba(217,119,6,0.05)}
-.row-danger td{background:rgba(220,38,38,0.05)}
-.row-zero td{background:#fafafa;color:var(--muted)}
-
-/* ── STICKY TABLE HEADER ── */
-.tbl-sticky thead th{position:sticky;top:0;z-index:10;box-shadow:0 1px 0 var(--border)}
-
-/* ── LAST MONTH COMPARE ── */
-.lm-compare{font-size:10px;margin-top:2px}
-.lm-up{color:var(--green)}
-.lm-down{color:var(--red)}
-.lm-same{color:var(--muted)}
-
-/* ── NOT STARTED TAG ── */
-.not-started{color:var(--muted);font-size:11px;font-style:italic}
-
-/* ── CARRY FWD BADGE ── */
-.cf-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr);white-space:nowrap}
 
 /* ── DARK MODE ── */
 function toggleDarkMode() {
@@ -1997,7 +1945,7 @@ window.copyYesterday = async () => {
   if (!yRecs.length) { showToast('No attendance found for ' + yesterday); return; }
   const existing = D.attendance.filter(a => a.date === d);
   if (existing.length) {
-    if (!confirm('Attendance for ' + d + ' already exists. Overwrite with yesterday\'s?')) return;
+    if (!confirm("Attendance for " + d + " already exists. Overwrite with yesterday's?")) return;
   }
   setSyncStatus('syncing', 'Copying...');
   const batch = writeBatch(db);
@@ -2016,7 +1964,7 @@ window.copyYesterday = async () => {
 
 /* ── PRINT / EXPORT PDF ── */
 function printCurrentPage() {
-  const m = document.getElementById('dash-month')?.value || thisMonth();
+  const dmEl = document.getElementById('dash-month'); const m = (dmEl ? dmEl.value : null) || thisMonth();
   document.getElementById('print-title').textContent = 'Labour Tracker — Adita Construction';
   document.getElementById('print-subtitle').textContent = mlabel(m) + ' · Generated ' + new Date().toLocaleDateString('en-IN');
   window.print();
