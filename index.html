@@ -436,7 +436,7 @@ tbody tr:hover{background:#f8fafc}
       Sign in with Google
     </button>
     <div class="login-error" id="login-error"></div>
-    <div class="login-loading" id="login-loading">Signing in...</div>
+    <div class="login-loading" id="login-loading">Redirecting to Google...</div>
   </div>
 </div>
 
@@ -662,7 +662,7 @@ tbody tr:hover{background:#f8fafc}
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut as fbSignOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, collection, getDocs, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -695,19 +695,28 @@ let unsubscribers = [];
 
 /* ── AUTH ── */
 window.signInWithGoogle = async () => {
-  document.getElementById('login-loading').style.display = 'block';
-  document.getElementById('login-error').style.display = 'none';
+  const loadEl = document.getElementById('login-loading');
+  const errEl = document.getElementById('login-error');
+  if (loadEl) { loadEl.textContent = 'Signing in...'; loadEl.style.display = 'block'; }
+  if (errEl) errEl.style.display = 'none';
   try {
-    const result = await signInWithPopup(auth, provider);
-    const email = result.user.email.toLowerCase();
-    if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
-      await fbSignOut(auth);
-      showLoginError('Access denied. ' + email + ' is not authorised.');
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      if (loadEl) loadEl.textContent = 'Redirecting to Google...';
+      await signInWithRedirect(auth, provider);
+    } else {
+      const result = await signInWithPopup(auth, provider);
+      const email = result.user.email.toLowerCase();
+      if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
+        await fbSignOut(auth);
+        if (errEl) { errEl.textContent = 'Access denied. ' + email + ' is not authorised.'; errEl.style.display = 'block'; }
+        if (loadEl) loadEl.style.display = 'none';
+      }
     }
   } catch(e) {
-    showLoginError('Sign-in failed: ' + e.message);
+    if (errEl) { errEl.textContent = 'Sign-in failed: ' + (e.message || e.code); errEl.style.display = 'block'; }
+    if (loadEl) loadEl.style.display = 'none';
   }
-  document.getElementById('login-loading').style.display = 'none';
 };
 
 window.signOut = async () => {
@@ -722,6 +731,23 @@ function showLoginError(msg) {
   el.textContent = msg; el.style.display = 'block';
   document.getElementById('login-loading').style.display = 'none';
 }
+
+// Handle redirect result (mobile Google sign-in returns here)
+getRedirectResult(auth).then(result => {
+  if (result && result.user) {
+    const email = result.user.email.toLowerCase();
+    if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
+      fbSignOut(auth);
+      const errEl = document.getElementById('login-error');
+      if (errEl) { errEl.textContent = 'Access denied. ' + email + ' is not authorised.'; errEl.style.display = 'block'; }
+    }
+  }
+}).catch(e => {
+  if (e.code && e.code !== 'auth/no-auth-event' && e.code !== 'auth/null-user') {
+    const errEl = document.getElementById('login-error');
+    if (errEl) { errEl.textContent = 'Sign-in error: ' + (e.message || e.code); errEl.style.display = 'block'; }
+  }
+});
 
 onAuthStateChanged(auth, user => {
   if (user) {
