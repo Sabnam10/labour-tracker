@@ -960,10 +960,14 @@ function calcWorker(w, m) {
       const ppFnp = Math.round(ppFN * ppWage);
       const ppAdvs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(ppMonth)).reduce((s,a) => s + a.amount, 0);
       const ppNet = ppWages + ppOtp + ppFnp - ppAdvs;
-      prevCarry = ppNet < 0 ? ppNet : 0;
+      // Carry pp balance only if not paid
+      const ppPaid = isPaid(w.id, ppMonth, ppNet);
+      prevCarry = ppPaid ? 0 : ppNet;
     }
     const lmNet = lmWages + lmOtp + lmFnp - lmAdvs + prevCarry;
-    carry = lmNet < 0 ? lmNet : 0;
+    // Carry last month balance if NOT paid (positive = owed to worker, negative = advance excess)
+    const lmPaid = isPaid(w.id, lastMonth, lmNet);
+    carry = lmPaid ? 0 : lmNet;
   }
   const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
@@ -1873,7 +1877,7 @@ window.openWorkerProfile = (wid, profileMonth) => {
             const srcLabel = srcMonth ? mlabel(srcMonth) : 'Previous month';
             const reason = c.carry < 0
               ? (c.advs > c.wages ? 'advances exceeded wages' : 'unpaid balance pending')
-              : 'overpayment credit';
+              : 'unpaid wages from last month';
             return `<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:2px">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <div>
