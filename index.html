@@ -1863,10 +1863,30 @@ window.openWorkerProfile = (wid, profileMonth) => {
           ${c.otp>0?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">OT Pay</span><span style="color:#60a5fa;font-weight:600">+${fmt(c.otp)}</span></div>`:''}
           ${c.fnp>0?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Full Night</span><span style="color:#c4b5fd;font-weight:600">+${fmt(c.fnp)}</span></div>`:''}
           <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Advances paid</span><span style="color:#fca5a5;font-weight:600">${c.advs>0?'-'+fmt(c.advs):'₹0'}</span></div>
-          ${c.carry?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Carry forward</span><span style="color:#fbbf24;font-weight:600">${c.carry<0?'-':''}${fmt(c.carry)}</span></div>`:''}
+          ${c.carry ? (() => {
+            // Find the source month for carry forward
+            const prevMonths = [...new Set([
+              ...D.attendance.filter(a=>a.wid===wid&&a.date&&a.date.slice(0,7)<m).map(a=>a.date.slice(0,7)),
+              ...D.advances.filter(a=>a.wid===wid&&a.date&&a.date.slice(0,7)<m).map(a=>a.date.slice(0,7))
+            ])].sort((a,b)=>b.localeCompare(a));
+            const srcMonth = prevMonths.length ? prevMonths[0] : '';
+            const srcLabel = srcMonth ? mlabel(srcMonth) : 'Previous month';
+            const reason = c.carry < 0
+              ? (c.advs > c.wages ? 'advances exceeded wages' : 'unpaid balance pending')
+              : 'overpayment credit';
+            return `<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:2px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <span style="color:rgba(255,255,255,0.6)">Carry forward</span>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">from ${srcLabel} · ${reason}</div>
+                </div>
+                <span style="color:#fbbf24;font-weight:600">${c.carry<0?'-'+fmt(Math.abs(c.carry)):'+'+fmt(c.carry)}</span>
+              </div>
+            </div>`;
+          })() : ''}
           <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:4px;padding-top:10px;display:flex;justify-content:space-between;font-size:16px;font-weight:800">
             <span style="color:rgba(255,255,255,0.8)">Net Payable</span>
-            <span style="color:${c.net<0?'#fca5a5':'#4ade80'}">${c.net<0?'-':''}${fmt(c.net)}</span>
+            <span style="color:${c.net<0?'#fca5a5':'#4ade80'}">${c.net<0?'-':''}${fmt(Math.abs(c.net))}</span>
           </div>
         </div>
       </div>
