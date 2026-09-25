@@ -1548,9 +1548,29 @@ window.togglePaid = async (wid, month, currentNet) => {
         <button class="btn-accent" onclick="confirmPaid('${wid}','${month}',${currentNet})">Confirm Paid</button>
       </div>`);
   } else {
+    // Check if this month had carry forward from previous months
+    const w = D.workers.find(x => x.id === wid);
+    const c = w ? calcWorker(w, month) : null;
+    const hadCarry = c && c.carry !== 0;
+    const msg = hadCarry
+      ? 'This will also reopen previous month(s) whose balance was carried into this payment. Mark as unpaid?'
+      : 'Mark as unpaid?';
+    if (!confirm(msg)) return;
     const id = existing ? existing.id : uid();
-    closeModal();
     await fsSet('paidStatus', id, { wid, month, paid: false, note: '', mode: '' });
+    // Also unmark previous months that were auto-settled
+    if (w && hadCarry) {
+      const prevMonths = [...new Set([
+        ...D.attendance.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
+        ...D.advances.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
+      ])];
+      for (const pm of prevMonths) {
+        const pex = D.paidStatus.find(p => p.wid === wid && p.month === pm);
+        if (pex && pex.note && pex.note.includes('Auto-settled')) {
+          await fsSet('paidStatus', pex.id, { wid, month: pm, paid: false, note: '', mode: '' });
+        }
+      }
+    }
     showToast('Marked as unpaid');
   }
 };
@@ -1559,10 +1579,32 @@ window.confirmPaid = async (wid, month, currentNet) => {
   const mode = document.getElementById('pay-mode').value;
   const amt = document.getElementById('pay-amt').value;
   const note = document.getElementById('pay-note').value.trim();
+  closeModal();
+
+  // Mark current month paid
   const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
   const id = existing ? existing.id : uid();
-  closeModal();
   await fsSet('paidStatus', id, { wid, month, paid: true, mode, amt: amt||'', note });
+
+  // Auto-mark all previous unpaid months as paid too
+  // (since their balance was included in this payment)
+  const w = D.workers.find(x => x.id === wid);
+  if (w) {
+    const prevMonths = [...new Set([
+      ...D.attendance.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
+      ...D.advances.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
+    ])].sort((a,b) => b.localeCompare(a));
+
+    for (const pm of prevMonths) {
+      const pc = calcWorker(w, pm);
+      if (!isPaid(wid, pm, pc.net)) {
+        const pex = D.paidStatus.find(p => p.wid === wid && p.month === pm);
+        const pid = pex ? pex.id : uid();
+        await fsSet('paidStatus', pid, { wid, month: pm, paid: true, mode: 'Carried into ' + mlabel(month), amt: '', note: 'Auto-settled: balance carried into ' + mlabel(month) });
+      }
+    }
+  }
+
   showToast('✓ Marked as paid · ' + mode);
 };
 
@@ -1814,15 +1856,21 @@ window.openWorkerProfile = (wid, profileMonth) => {
     ...D.attendance.filter(a=>a.wid===wid&&a.date).map(a=>a.date.slice(0,7)),
     ...D.advances.filter(a=>a.wid===wid&&a.date).map(a=>a.date.slice(0,7))
   ])].sort((a,b)=>b.localeCompare(a));
+
+  // Settlement history shows RAW monthly figures (no carry forward)
+  // Carry forward only shows in the current month's financial summary
   const settRows = workerMonths.length ? workerMonths.map(sm => {
     const sc = calcWorker(w, sm);
-    const sPaid = isPaid(wid, sm, sc.net);
+    // Raw net = just this month's wages + OT + FN - advances (no carry)
+    const rawNet = sc.wages + sc.otp + sc.fnp - sc.advs;
+    const sPaid = isPaid(wid, sm, sc.net); // use full net for paid check
+    const carryIn = sc.carry; // carry FROM previous into this month
     return `<tr>
     <td style="font-weight:600">${mlabel(sm)}</td>
-    <td>${fmt(sc.wages)}</td>
-    <td>${sc.otp>0?fmt(sc.otp):'—'}</td>
-    <td class="text-red">${sc.advs>0?'-'+fmt(sc.advs):'-₹0'}</td>
-    <td style="font-weight:700">${fmtS(sc.net)}</td>
+    <td>${fmt(sc.wages)}${sc.otp>0?` <span style="color:var(--blue);font-size:10px">+${fmt(sc.otp)}</span>`:''}${sc.fnp>0?` <span style="color:#7c3aed;font-size:10px">+${fmt(sc.fnp)}</span>`:''}</td>
+    <td class="text-red">${sc.advs>0?'-'+fmt(sc.advs):'—'}</td>
+    <td style="font-weight:600;${rawNet<0?'color:var(--red)':'color:var(--green)'}">${rawNet<0?'-'+fmt(Math.abs(rawNet)):fmt(rawNet)}</td>
+    <td style="font-size:10px;color:var(--muted)">${carryIn!==0?`<span style="color:${carryIn>0?'var(--green)':'var(--amber)'};font-weight:600">${carryIn>0?'+':''}${fmtS(carryIn)}</span>`:'—'}</td>
     <td><span class="badge ${sPaid?'badge-paid':'badge-unpaid'}">${sPaid?(sc.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span></td>
   </tr>`;}).join('') : `<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No data yet</td></tr>`;
 
@@ -1867,24 +1915,25 @@ window.openWorkerProfile = (wid, profileMonth) => {
           ${c.otp>0?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">OT Pay</span><span style="color:#60a5fa;font-weight:600">+${fmt(c.otp)}</span></div>`:''}
           ${c.fnp>0?`<div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Full Night</span><span style="color:#c4b5fd;font-weight:600">+${fmt(c.fnp)}</span></div>`:''}
           <div style="display:flex;justify-content:space-between"><span style="color:rgba(255,255,255,0.6)">Advances paid</span><span style="color:#fca5a5;font-weight:600">${c.advs>0?'-'+fmt(c.advs):'₹0'}</span></div>
+          <div style="border-top:1px solid rgba(255,255,255,0.08);margin-top:2px;padding-top:8px;display:flex;justify-content:space-between">
+            <span style="color:rgba(255,255,255,0.5);font-size:11px">Gross this month</span>
+            <span style="color:rgba(255,255,255,0.7);font-weight:600;font-size:11px">${(()=>{const g=c.wages+c.otp+c.fnp-c.advs; return (g<0?'-':'')+fmt(Math.abs(g));})()}</span>
+          </div>
           ${c.carry ? (() => {
-            // Find the source month for carry forward
             const prevMonths = [...new Set([
               ...D.attendance.filter(a=>a.wid===wid&&a.date&&a.date.slice(0,7)<m).map(a=>a.date.slice(0,7)),
               ...D.advances.filter(a=>a.wid===wid&&a.date&&a.date.slice(0,7)<m).map(a=>a.date.slice(0,7))
             ])].sort((a,b)=>b.localeCompare(a));
             const srcMonth = prevMonths.length ? prevMonths[0] : '';
             const srcLabel = srcMonth ? mlabel(srcMonth) : 'Previous month';
-            const reason = c.carry < 0
-              ? (c.advs > c.wages ? 'advances exceeded wages' : 'unpaid balance pending')
-              : 'unpaid wages from last month';
-            return `<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:2px">
+            const reason = c.carry > 0 ? 'unpaid wages pending' : 'advances exceeded wages';
+            return `<div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.15);border-radius:6px;padding:8px 10px;margin-top:2px">
               <div style="display:flex;justify-content:space-between;align-items:flex-start">
                 <div>
-                  <span style="color:rgba(255,255,255,0.6)">Carry forward</span>
-                  <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">from ${srcLabel} · ${reason}</div>
+                  <span style="color:rgba(255,255,255,0.6);font-size:12px">Carry forward</span>
+                  <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px">from ${srcLabel} · ${reason}</div>
                 </div>
-                <span style="color:#fbbf24;font-weight:600">${c.carry<0?'-'+fmt(Math.abs(c.carry)):'+'+fmt(c.carry)}</span>
+                <span style="color:#fbbf24;font-weight:700;font-size:13px">${c.carry>0?'+':''}${fmtS(c.carry)}</span>
               </div>
             </div>`;
           })() : ''}
@@ -1912,7 +1961,7 @@ window.openWorkerProfile = (wid, profileMonth) => {
       <div class="prof-section">
         <div class="prof-section-title">Settlement History — All Months</div>
         <div style="max-height:180px;overflow-y:auto;border:1.5px solid var(--border);border-radius:var(--radius-sm)">
-          <table class="prof-tbl"><thead><tr><th>Month</th><th>Wages</th><th>OT</th><th>Advances</th><th>Net</th><th>Status</th></tr></thead><tbody>${settRows}</tbody></table>
+          <table class="prof-tbl"><thead><tr><th>Month</th><th>Wages / OT / FN</th><th>Advances</th><th>This Month Net</th><th>Carry Fwd In</th><th>Status</th></tr></thead><tbody>${settRows}</tbody></table>
         </div>
       </div>
 
