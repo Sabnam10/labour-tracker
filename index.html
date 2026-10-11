@@ -909,6 +909,124 @@ function getWageForMonth(w, m) {
   return override ? override.wage : w.wage;
 }
 
+function getPaidAmt(wid, month) {
+  const ps = D.paidStatus.find(p => p.wid === wid && p.month === month);
+  if (!ps) return 0;
+  return parseFloat(ps.amt) || 0;
+}
+function isPaid(wid, month, net) {
+  // Paid if paid amount >= net payable (or net <= 0)
+  if (net <= 0) return true;
+  const paidAmt = getPaidAmt(wid, month);
+  return paidAmt >= net;
+}
+function getRemainingAmt(wid, month, net) {
+  if (net <= 0) return 0;
+  const paidAmt = getPaidAmt(wid, month);
+  return Math.max(0, net - paidAmt);
+}
+
+window.togglePaid = async (wid, month, currentNet) => {
+  const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
+  const currentPaid = existing ? existing.paid : false;
+  if (!currentPaid) {
+    // Ask for payment note when marking paid
+    openModal(`
+      <div class="modal-head"><h3>Mark as Paid</h3><button class="modal-close" onclick="closeModal()">${closeIco()}</button></div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Recording payment for <b>${wname(wid)}</b> — ${mlabel(month)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="fg"><label>Payment mode</label>
+            <select id="pay-mode">
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Partial">Partial</option>
+            </select>
+          </div>
+          <div class="fg"><label>Amount paid (₹)</label><input id="pay-amt" type="number" placeholder="${Math.abs(Math.round(currentNet))}"></div>
+        </div>
+        <div class="fg"><label>Note (optional)</label><input id="pay-note" placeholder="e.g. Paid via GPay to 9876543210"></div>
+      </div>
+      <div class="modal-foot">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="btn-accent" onclick="confirmPaid('${wid}','${month}',${currentNet})">Confirm Paid</button>
+      </div>`);
+  } else {
+    // Check if this month had carry forward from previous months
+    const w = D.workers.find(x => x.id === wid);
+    const c = w ? calcWorker(w, month) : null;
+    const hadCarry = c && c.carry !== 0;
+    const msg = hadCarry
+      ? 'This will also reopen previous month(s) whose balance was carried into this payment. Mark as unpaid?'
+      : 'Mark as unpaid?';
+    if (!confirm(msg)) return;
+    const id = existing ? existing.id : uid();
+    await fsSet('paidStatus', id, { wid, month, paid: false, note: '', mode: '' });
+    // Also unmark previous months that were auto-settled
+    if (w && hadCarry) {
+      const prevMonths = [...new Set([
+        ...D.attendance.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
+        ...D.advances.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
+      ])];
+      for (const pm of prevMonths) {
+        const pex = D.paidStatus.find(p => p.wid === wid && p.month === pm);
+        if (pex && pex.note && pex.note.includes('Auto-settled')) {
+          await fsSet('paidStatus', pex.id, { wid, month: pm, paid: false, note: '', mode: '' });
+        }
+      }
+    }
+    showToast('Marked as unpaid');
+  }
+};
+
+window.confirmPaid = async (wid, month, currentNet, prevPaid) => {
+  const mode = document.getElementById('pay-mode').value;
+  const newAmt = parseFloat(document.getElementById('pay-amt').value) || 0;
+  const note = document.getElementById('pay-note').value.trim();
+  closeModal();
+  const totalPaid = (prevPaid || 0) + newAmt;
+  const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
+  const id = existing ? existing.id : uid();
+  const paid = totalPaid >= Math.max(0, currentNet);
+  await fsSet('paidStatus', id, { wid, month, paid, amt: String(totalPaid), mode, note });
+  const remaining = Math.max(0, currentNet - totalPaid);
+  showToast(remaining <= 0 ? '✓ Fully paid · ' + mode : '✓ Partial: ₹' + fmt(remaining) + ' remaining');
+};
+
+
+
+// Compute carry forward for worker w into month m
+// Recursively traces all previous months
+function computeCarry(w, m, depth) {
+  if ((depth||0) > 24) return 0; // safety cap: 24 months back max
+  const prevMonths = [...new Set([
+    ...D.attendance.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < m).map(a => a.date.slice(0,7)),
+    ...D.advances.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < m).map(a => a.date.slice(0,7)),
+  ])].sort((a,b) => b.localeCompare(a));
+  if (!prevMonths.length) return 0;
+
+  const lm = prevMonths[0];
+  const lmAtt = D.attendance.filter(a => a.wid === w.id && a.date && a.date.startsWith(lm));
+  const lmP = lmAtt.filter(a => a.status === 'P').length;
+  const lmH = lmAtt.filter(a => a.status === 'H').length;
+  const lmOT = lmAtt.filter(a => a.ot).length;
+  const lmFN = lmAtt.filter(a => a.fn).length;
+  const lmWage = getWageForMonth(w, lm);
+  const lmWages = Math.round((lmP + lmH * 0.5) * lmWage);
+  const lmOtp = Math.round(lmOT * lmWage * 0.5);
+  const lmFnp = Math.round(lmFN * lmWage);
+  const lmAdvs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(lm)).reduce((s,a) => s + a.amount, 0);
+  const lmCarry = computeCarry(w, lm, (depth||0) + 1);
+  const lmNet = lmWages + lmOtp + lmFnp - lmAdvs + lmCarry;
+
+  if (lmNet < 0) return lmNet; // advance excess always carries
+  const lmPaidAmt = getPaidAmt(w.id, lm);
+  return Math.max(0, lmNet - lmPaidAmt); // carry unpaid portion
+}
+
+
 function calcWorker(w, m) {
   const wage = getWageForMonth(w, m);
   // Only active workers or all (for settlements/history)
@@ -961,16 +1079,25 @@ function calcWorker(w, m) {
       const ppAdvs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(ppMonth)).reduce((s,a) => s + a.amount, 0);
       const ppNet = ppWages + ppOtp + ppFnp - ppAdvs;
       // Carry pp balance only if not paid
-      // Negative net always carries (advance excess credit)
-      const ppPaid = isPaid(w.id, ppMonth, ppNet);
-      prevCarry = (ppNet < 0) ? ppNet : (ppPaid ? 0 : ppNet);
+      // Negative net always carries; positive: carry remaining unpaid
+      if (ppNet < 0) {
+        prevCarry = ppNet;
+      } else {
+        const ppPaidAmt = getPaidAmt(w.id, ppMonth);
+        prevCarry = Math.max(0, ppNet - ppPaidAmt);
+      }
     }
     const lmNet = lmWages + lmOtp + lmFnp - lmAdvs + prevCarry;
     // Carry last month balance if NOT paid (positive = owed to worker, negative = advance excess)
     // Negative net always carries (advance excess credit)
-    // Positive net carries only if unpaid
-    const lmPaid = isPaid(w.id, lastMonth, lmNet);
-    carry = (lmNet < 0) ? lmNet : (lmPaid ? 0 : lmNet);
+    // Positive net: carry only the REMAINING unpaid portion
+    if (lmNet < 0) {
+      carry = lmNet; // advance excess always carries
+    } else {
+      const lmPaidAmt = getPaidAmt(w.id, lastMonth);
+      carry = Math.max(0, lmNet - lmPaidAmt); // remaining unpaid
+      if (carry === 0) carry = 0; // fully paid = no carry
+    }
   }
   const net = wages + otp + fnp - advs + carry;
   const sett = D.settlements.find(s => s.wid === w.id && s.month === m);
@@ -1512,92 +1639,6 @@ window.saveBulkAdv = async () => {
 
 function getPaidKey(wid, month) { return wid + '_' + month; }
 
-function getPaidAmt(wid, month) {
-  const ps = D.paidStatus.find(p => p.wid === wid && p.month === month);
-  if (!ps) return 0;
-  return parseFloat(ps.amt) || 0;
-}
-function isPaid(wid, month, net) {
-  // Paid if paid amount >= net payable (or net <= 0)
-  if (net <= 0) return true;
-  const paidAmt = getPaidAmt(wid, month);
-  return paidAmt >= net;
-}
-function getRemainingAmt(wid, month, net) {
-  if (net <= 0) return 0;
-  const paidAmt = getPaidAmt(wid, month);
-  return Math.max(0, net - paidAmt);
-}
-
-window.togglePaid = async (wid, month, currentNet) => {
-  const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
-  const currentPaid = existing ? existing.paid : false;
-  if (!currentPaid) {
-    // Ask for payment note when marking paid
-    openModal(`
-      <div class="modal-head"><h3>Mark as Paid</h3><button class="modal-close" onclick="closeModal()">${closeIco()}</button></div>
-      <div class="modal-body">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Recording payment for <b>${wname(wid)}</b> — ${mlabel(month)}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="fg"><label>Payment mode</label>
-            <select id="pay-mode">
-              <option value="Cash">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Partial">Partial</option>
-            </select>
-          </div>
-          <div class="fg"><label>Amount paid (₹)</label><input id="pay-amt" type="number" placeholder="${Math.abs(Math.round(currentNet))}"></div>
-        </div>
-        <div class="fg"><label>Note (optional)</label><input id="pay-note" placeholder="e.g. Paid via GPay to 9876543210"></div>
-      </div>
-      <div class="modal-foot">
-        <button onclick="closeModal()">Cancel</button>
-        <button class="btn-accent" onclick="confirmPaid('${wid}','${month}',${currentNet})">Confirm Paid</button>
-      </div>`);
-  } else {
-    // Check if this month had carry forward from previous months
-    const w = D.workers.find(x => x.id === wid);
-    const c = w ? calcWorker(w, month) : null;
-    const hadCarry = c && c.carry !== 0;
-    const msg = hadCarry
-      ? 'This will also reopen previous month(s) whose balance was carried into this payment. Mark as unpaid?'
-      : 'Mark as unpaid?';
-    if (!confirm(msg)) return;
-    const id = existing ? existing.id : uid();
-    await fsSet('paidStatus', id, { wid, month, paid: false, note: '', mode: '' });
-    // Also unmark previous months that were auto-settled
-    if (w && hadCarry) {
-      const prevMonths = [...new Set([
-        ...D.attendance.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
-        ...D.advances.filter(a => a.wid===wid && a.date && a.date.slice(0,7) < month).map(a => a.date.slice(0,7)),
-      ])];
-      for (const pm of prevMonths) {
-        const pex = D.paidStatus.find(p => p.wid === wid && p.month === pm);
-        if (pex && pex.note && pex.note.includes('Auto-settled')) {
-          await fsSet('paidStatus', pex.id, { wid, month: pm, paid: false, note: '', mode: '' });
-        }
-      }
-    }
-    showToast('Marked as unpaid');
-  }
-};
-
-window.confirmPaid = async (wid, month, currentNet, prevPaid) => {
-  const mode = document.getElementById('pay-mode').value;
-  const newAmt = parseFloat(document.getElementById('pay-amt').value) || 0;
-  const note = document.getElementById('pay-note').value.trim();
-  closeModal();
-  const totalPaid = (prevPaid || 0) + newAmt;
-  const existing = D.paidStatus.find(p => p.wid === wid && p.month === month);
-  const id = existing ? existing.id : uid();
-  const paid = totalPaid >= Math.max(0, currentNet);
-  await fsSet('paidStatus', id, { wid, month, paid, amt: String(totalPaid), mode, note });
-  const remaining = Math.max(0, currentNet - totalPaid);
-  showToast(remaining <= 0 ? '✓ Fully paid · ' + mode : '✓ Partial: ₹' + fmt(remaining) + ' remaining');
-};
-
 function renderSettlements() {
   const m = document.getElementById('set-fm').value || thisMonth();
   const activeWorkers = D.workers.filter(w => w.active !== false);
@@ -1863,7 +1904,17 @@ window.openWorkerProfile = (wid, profileMonth) => {
     <td class="text-red">${sc.advs>0?'-'+fmt(sc.advs):'—'}</td>
     <td style="font-weight:600;${rawNet<0?'color:var(--red)':'color:var(--green)'}">${rawNet<0?'-'+fmt(Math.abs(rawNet)):fmt(rawNet)}</td>
     <td style="font-size:10px;color:var(--muted)">${carryIn!==0?`<span style="color:${carryIn>0?'var(--green)':'var(--amber)'};font-weight:600">${carryIn>0?'+':''}${fmtS(carryIn)}</span>`:'—'}</td>
-    <td>${(()=>{const rawN=sc.wages+sc.otp+sc.fnp-sc.advs; if(rawN<=0) return '<span style="color:var(--muted)">—</span>'; const rem=getRemainingAmt(wid,sm,sc.net); const pa=getPaidAmt(wid,sm); return rem<=0?'<span class="badge badge-paid">₹0</span>':pa>0?'<span style="color:var(--amber);font-weight:600">₹'+fmt(rem)+' left</span>':'<span style="color:var(--red);font-weight:600">₹'+fmt(rawN)+' due</span>';})()}</td>
+    <td>${(()=>{
+  const fullNet=sc.net; // includes carry forward
+  if(fullNet<=0) return '<span style="color:var(--muted)">—</span>';
+  const rem=getRemainingAmt(wid,sm,fullNet);
+  const pa=getPaidAmt(wid,sm);
+  return rem<=0
+    ?'<span class="badge badge-paid">₹0</span>'
+    :pa>0
+      ?'<span style="color:var(--amber);font-weight:600">₹'+fmt(rem)+' left</span>'
+      :'<span style="color:var(--red);font-weight:600">₹'+fmt(fullNet)+' due</span>';
+})()}</td>
   </tr>`;}).join('') : `<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No data yet</td></tr>`;
 
   openModal(`
