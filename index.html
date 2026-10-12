@@ -1107,10 +1107,9 @@ function renderDashboard() {
   const calcs = activeWorkers.map(w => {
     const c = calcWorker(w, m);
     const lc = calcWorker(w, lastM); // last month for comparison
-    const paid = isPaid(w.id, m, c.net);
     tNet += c.net;
     tWages += c.wages + c.otp + c.fnp;
-    return { w, c, lc, paid };
+    return { w, c, lc };
   });
 
   // ── SORT ──
@@ -1122,7 +1121,7 @@ function renderDashboard() {
     return 0;
   });
 
-  const unpaidCount = calcs.filter(({paid}) => !paid).length;
+  const unpaidCount = calcs.filter(({w,c}) => getRemainingAmt(w.id,m,c.net) > 0).length;
   const paidCount = calcs.length - unpaidCount;
   const tAdvances = D.advances.filter(a => a.date && a.date.startsWith(m)).reduce((s,a) => s + a.amount, 0);
   const presentToday = D.attendance.filter(a => a.date === todayStr && (a.status==='P'||a.status==='H')).length;
@@ -1144,11 +1143,12 @@ function renderDashboard() {
     return;
   }
 
-  const dRows = calcs.map(({w,c,lc,paid}) => {
+  const dRows = calcs.map(({w,c,lc}) => {
     const notStarted = c.p===0 && c.h===0 && c.ab===0 && c.otDays===0;
     const isOverpaid = c.advs > c.wages && c.wages > 0;
     const isWarning = !isOverpaid && c.wages > 0 && (c.advs/c.wages) >= 0.8;
-    const rowClass = paid ? 'row-paid' : isOverpaid ? 'row-danger' : isWarning ? 'row-warning' : notStarted ? 'row-zero' : '';
+    const remAmt = getRemainingAmt(w.id, m, c.net);
+    const rowClass = remAmt<=0&&c.net>0 ? 'row-paid' : isOverpaid ? 'row-danger' : isWarning ? 'row-warning' : notStarted ? 'row-zero' : '';
     const advPct = c.wages > 0 ? Math.min(c.advs/c.wages, 1) : 0;
     const barColor = isOverpaid ? 'var(--red)' : isWarning ? 'var(--amber)' : 'var(--green)';
     const advBar = c.wages > 0 ? `<div class="adv-bar-wrap"><div class="adv-bar-fill" style="width:${Math.round(advPct*100)}%;background:${barColor}"></div></div>` : '';
@@ -1176,13 +1176,12 @@ function renderDashboard() {
       ${lmCompare}
     </td>
     <td>
-      <span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span>
-      ${advWarning(c.wages, c.advs)}
+      ${(()=>{ const rem=getRemainingAmt(w.id,m,c.net); return c.net<=0?'<span style="color:var(--muted)">—</span>':rem<=0?'<span style="font-weight:700;color:var(--green)">₹0</span>':'<span style="font-weight:700;color:var(--red)">₹'+fmt(rem)+'</span>'; })()}
     </td>
   </tr>`;}).join('');
   document.getElementById('dash-table-desktop').innerHTML = `<div style="overflow-x:auto"><table class="tbl-sticky"><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances (%)</th><th>Carry Fwd</th><th>Net Payable</th><th>Balance Due</th></tr></thead><tbody>${dRows}</tbody></table></div>`;
 
-  const mCards = calcs.map(({w,c,lc,paid}) => {
+  const mCards = calcs.map(({w,c,lc}) => {
     const notStarted = c.p===0 && c.h===0 && c.ab===0;
     const isOverpaid = c.advs > c.wages && c.wages > 0;
     const isWarning = !isOverpaid && c.wages > 0 && (c.advs/c.wages) >= 0.8;
