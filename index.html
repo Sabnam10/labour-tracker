@@ -1180,7 +1180,7 @@ function renderDashboard() {
       ${advWarning(c.wages, c.advs)}
     </td>
   </tr>`;}).join('');
-  document.getElementById('dash-table-desktop').innerHTML = `<div style="overflow-x:auto"><table class="tbl-sticky"><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances (%)</th><th>Carry Fwd</th><th>Net Payable</th><th>Status</th></tr></thead><tbody>${dRows}</tbody></table></div>`;
+  document.getElementById('dash-table-desktop').innerHTML = `<div style="overflow-x:auto"><table class="tbl-sticky"><thead><tr><th>Name</th><th>Attendance</th><th>OT/FN</th><th>Wages</th><th>Advances (%)</th><th>Carry Fwd</th><th>Net Payable</th><th>Balance Due</th></tr></thead><tbody>${dRows}</tbody></table></div>`;
 
   const mCards = calcs.map(({w,c,lc,paid}) => {
     const notStarted = c.p===0 && c.h===0 && c.ab===0;
