@@ -428,6 +428,7 @@ tbody tr:hover{background:#f8fafc}
 .qm-h{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bdr)}.qm-h:hover,.qm-h.active{background:var(--amber);color:#fff;border-color:var(--amber)}
 .qm-a{background:var(--red-bg);color:var(--red);border-color:var(--red-bdr)}.qm-a:hover,.qm-a.active{background:var(--red);color:#fff;border-color:var(--red)}
 .qm-ot{background:var(--blue-bg);color:var(--blue);border-color:rgba(96,165,250,0.3)}.qm-ot:hover,.qm-ot.active{background:var(--blue);color:#fff}
+.qm-fn{background:var(--purple-bg);color:#7c3aed;border-color:rgba(124,58,237,0.3)}.qm-fn:hover,.qm-fn.active{background:#7c3aed;color:#fff}
 .qm-saved{font-size:10px;font-weight:600;color:var(--green);margin-left:4px;opacity:0;transition:opacity .3s}.qm-saved.show{opacity:1}
 </style>
 </head>
@@ -1106,6 +1107,7 @@ function renderDashboard() {
               <button class="qm-btn qm-h" onclick="quickMark('${w.id}','H',this)">H</button>
               <button class="qm-btn qm-a" onclick="quickMark('${w.id}','A',this)">A</button>
               <button class="qm-btn qm-ot" id="qm-ot-${w.id}" onclick="quickMarkOT('${w.id}',this)" style="display:none">+OT</button>
+              <button class="qm-btn qm-fn" id="qm-fn-${w.id}" onclick="quickMarkFN('${w.id}',this)" style="display:none">+FN</button>
             </div>
             <span class="qm-saved" id="qm-saved-${w.id}">✓ Saved</span>
           </div>`).join('');
@@ -2084,6 +2086,8 @@ window.quickMark = async (wid, status, btn) => {
   btn.classList.add('active');
   const otBtn = document.getElementById('qm-ot-' + wid);
   if (otBtn) otBtn.style.display = (status === 'P' || status === 'H') ? 'inline-flex' : 'none';
+  const fnBtn = document.getElementById('qm-fn-' + wid);
+  if (fnBtn) fnBtn.style.display = status === 'P' ? 'inline-flex' : 'none';
   const existing = D.attendance.find(a => a.wid === wid && a.date === d);
   const id = existing ? existing.id : uid();
   await fsSet('attendance', id, { wid, date: d, status, ot: existing ? existing.ot||false : false, fn: false, note: '' });
@@ -2100,6 +2104,16 @@ window.quickMarkOT = async (wid, btn) => {
   btn.classList.toggle('active', newOT);
   btn.textContent = newOT ? '✓ OT' : '+OT';
   await fsSet('attendance', existing.id, { ...existing, ot: newOT });
+};
+
+window.quickMarkFN = async (wid, btn) => {
+  const d = today();
+  const existing = D.attendance.find(a => a.wid === wid && a.date === d);
+  if (!existing) return;
+  const newFN = !existing.fn;
+  btn.classList.toggle('active', newFN);
+  btn.textContent = newFN ? '✓ FN' : '+FN';
+  await fsSet('attendance', existing.id, { ...existing, fn: newFN });
 };
 
 /* ── INIT ── */
