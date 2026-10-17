@@ -417,6 +417,18 @@ tbody tr:hover{background:#f8fafc}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+
+
+/* ── QUICK MARK ── */
+.qm-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);margin-bottom:6px;flex-wrap:wrap;transition:opacity .4s}
+.qm-name{font-size:13px;font-weight:600;flex:1;min-width:80px;color:var(--text)}
+.qm-btns{display:flex;gap:4px}
+.qm-btn{height:28px;padding:0 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid;box-shadow:none;transition:all .12s}
+.qm-p{background:var(--green-bg);color:var(--green);border-color:var(--green-bdr)}.qm-p:hover,.qm-p.active{background:var(--green);color:#fff;border-color:var(--green)}
+.qm-h{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bdr)}.qm-h:hover,.qm-h.active{background:var(--amber);color:#fff;border-color:var(--amber)}
+.qm-a{background:var(--red-bg);color:var(--red);border-color:var(--red-bdr)}.qm-a:hover,.qm-a.active{background:var(--red);color:#fff;border-color:var(--red)}
+.qm-ot{background:var(--blue-bg);color:var(--blue);border-color:rgba(96,165,250,0.3)}.qm-ot:hover,.qm-ot.active{background:var(--blue);color:#fff}
+.qm-saved{font-size:10px;font-weight:600;color:var(--green);margin-left:4px;opacity:0;transition:opacity .3s}.qm-saved.show{opacity:1}
 </style>
 </head>
 <body>
@@ -1083,10 +1095,24 @@ function renderDashboard() {
       <div class="today-chip tc-a"><span>${tA}</span> Absent</div>
       ${unmarked.length ? `<div class="today-chip tc-n"><span>${unmarked.length}</span> Not marked</div>` : ''}
     `;
-    document.getElementById('unmarked-list').innerHTML = unmarked.length
-      ? `<div style="font-size:11px;color:var(--muted);font-weight:600;width:100%;margin-bottom:4px">Not yet marked today:</div>` +
-        unmarked.map(w => `<span class="unmarked-pill">${w.name}</span>`).join('')
-      : `<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ All workers marked for today</div>`;
+    if (unmarked.length) {
+      document.getElementById('unmarked-list').innerHTML =
+        `<div style="font-size:11px;color:var(--muted);font-weight:600;width:100%;margin-bottom:8px">⚡ Quick mark for today:</div>` +
+        unmarked.map(w => `
+          <div class="qm-row" id="qmr-${w.id}">
+            <span class="qm-name">${w.name}</span>
+            <div class="qm-btns">
+              <button class="qm-btn qm-p" onclick="quickMark('${w.id}','P',this)">P</button>
+              <button class="qm-btn qm-h" onclick="quickMark('${w.id}','H',this)">H</button>
+              <button class="qm-btn qm-a" onclick="quickMark('${w.id}','A',this)">A</button>
+              <button class="qm-btn qm-ot" id="qm-ot-${w.id}" onclick="quickMarkOT('${w.id}',this)" style="display:none">+OT</button>
+            </div>
+            <span class="qm-saved" id="qm-saved-${w.id}">✓ Saved</span>
+          </div>`).join('');
+    } else {
+      document.getElementById('unmarked-list').innerHTML =
+        `<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ All workers marked for today</div>`;
+    }
   } else {
     todayPanel.style.display = 'none';
   }
@@ -2048,6 +2074,33 @@ function getPaidNote(wid, month) {
   return note ? `<div style="font-size:10px;color:var(--muted);margin-top:3px">${note}</div>` : '';
 }
 
+
+
+/* ── QUICK MARK FROM DASHBOARD ── */
+window.quickMark = async (wid, status, btn) => {
+  const d = today();
+  const row = document.getElementById('qmr-' + wid);
+  if (row) row.querySelectorAll('.qm-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const otBtn = document.getElementById('qm-ot-' + wid);
+  if (otBtn) otBtn.style.display = (status === 'P' || status === 'H') ? 'inline-flex' : 'none';
+  const existing = D.attendance.find(a => a.wid === wid && a.date === d);
+  const id = existing ? existing.id : uid();
+  await fsSet('attendance', id, { wid, date: d, status, ot: existing ? existing.ot||false : false, fn: false, note: '' });
+  const saved = document.getElementById('qm-saved-' + wid);
+  if (saved) { saved.classList.add('show'); setTimeout(() => saved.classList.remove('show'), 2000); }
+  setTimeout(() => { if (row) { row.style.opacity = '0.35'; row.style.pointerEvents = 'none'; } }, 1500);
+};
+
+window.quickMarkOT = async (wid, btn) => {
+  const d = today();
+  const existing = D.attendance.find(a => a.wid === wid && a.date === d);
+  if (!existing) return;
+  const newOT = !existing.ot;
+  btn.classList.toggle('active', newOT);
+  btn.textContent = newOT ? '✓ OT' : '+OT';
+  await fsSet('attendance', existing.id, { ...existing, ot: newOT });
+};
 
 /* ── INIT ── */
 function initApp() {
