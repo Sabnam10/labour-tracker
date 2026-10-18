@@ -36,7 +36,7 @@
   --bottom-nav-h:64px;
 }
 html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;color:var(--text);background:var(--bg);overflow:hidden;-webkit-font-smoothing:antialiased}
-.app{display:flex;height:100vh;overflow:hidden}
+.app{display:flex;height:100vh;overflow:hidden;position:relative}
 
 /* ── SIDEBAR ── */
 .sidebar{width:220px;background:var(--sidebar-bg);color:#fff;display:flex;flex-direction:column;flex-shrink:0;border-right:none}
@@ -67,7 +67,7 @@ html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Sego
 .topbar-left h2{font-size:19px;font-weight:700;color:var(--text);letter-spacing:-.02em}
 .topbar-left p{font-size:10px;color:var(--muted);letter-spacing:.06em;margin-top:2px;font-weight:500}
 .topbar-right{display:flex;gap:8px;align-items:center;flex-shrink:0}
-.content{flex:1;overflow-y:auto;padding:20px 24px 40px;background:var(--bg);-webkit-overflow-scrolling:touch}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 24px 40px;background:var(--bg);-webkit-overflow-scrolling:touch}
 .page{display:none}.page.active{display:block}
 
 /* ── BOTTOM NAV ── */
@@ -389,6 +389,12 @@ tbody tr:hover{background:#f8fafc}
 .print-header{display:none;margin-bottom:16px}
 .print-header h2{font-size:18px;font-weight:700}
 .print-header p{font-size:12px;color:#666}
+
+
+@media(max-width:700px){
+  .page{padding-bottom:calc(var(--bottom-nav-h) + 20px + env(safe-area-inset-bottom,0px))!important}
+  .content{overflow-y:auto;-webkit-overflow-scrolling:touch}
+}
 
 /* ── RESPONSIVE ── */
 @media(max-width:700px){
@@ -1103,14 +1109,20 @@ function renderDashboard() {
           <div class="qm-row" id="qmr-${w.id}">
             <span class="qm-name">${w.name}</span>
             <div class="qm-btns">
-              <button class="qm-btn qm-p" onclick="quickMark('${w.id}','P',this)">P</button>
-              <button class="qm-btn qm-h" onclick="quickMark('${w.id}','H',this)">H</button>
-              <button class="qm-btn qm-a" onclick="quickMark('${w.id}','A',this)">A</button>
-              <button class="qm-btn qm-ot" id="qm-ot-${w.id}" onclick="quickMarkOT('${w.id}',this)" style="display:none">+OT</button>
-              <button class="qm-btn qm-fn" id="qm-fn-${w.id}" onclick="quickMarkFN('${w.id}',this)" style="display:none">+FN</button>
+              <button class="qm-btn qm-p" id="qm-p-${w.id}" onclick="quickMark('${w.id}','P',this)">P</button>
+              <button class="qm-btn qm-h" id="qm-h-${w.id}" onclick="quickMark('${w.id}','H',this)">H</button>
+              <button class="qm-btn qm-a" id="qm-a-${w.id}" onclick="quickMark('${w.id}','A',this)">A</button>
+              <button class="qm-btn qm-ot" id="qm-ot-${w.id}" onclick="quickToggle('${w.id}','ot',this)" style="display:none">+OT</button>
+              <button class="qm-btn qm-fn" id="qm-fn-${w.id}" onclick="quickToggle('${w.id}','fn',this)" style="display:none">+FN</button>
             </div>
-            <span class="qm-saved" id="qm-saved-${w.id}">✓ Saved</span>
-          </div>`).join('');
+            <div class="qm-adv-row">
+              <input class="qm-adv-input" id="qm-adv-${w.id}" type="number" placeholder="Advance ₹" min="0">
+              <input class="qm-adv-note" id="qm-note-${w.id}" type="text" placeholder="Reason">
+            </div>
+          </div>`).join('') +
+        `<div style="margin-top:10px;display:flex;justify-content:flex-end">
+          <button class="qm-save" id="qm-save-all" onclick="quickSaveAll()" style="height:34px;padding:0 22px;font-size:12px">💾 Save All</button>
+        </div>`;
     } else {
       document.getElementById('unmarked-list').innerHTML =
         `<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ All workers marked for today</div>`;
@@ -2096,24 +2108,51 @@ window.quickMark = async (wid, status, btn) => {
   setTimeout(() => { if (row) { row.style.opacity = '0.35'; row.style.pointerEvents = 'none'; } }, 1500);
 };
 
-window.quickMarkOT = async (wid, btn) => {
-  const d = today();
-  const existing = D.attendance.find(a => a.wid === wid && a.date === d);
-  if (!existing) return;
-  const newOT = !existing.ot;
-  btn.classList.toggle('active', newOT);
-  btn.textContent = newOT ? '✓ OT' : '+OT';
-  await fsSet('attendance', existing.id, { ...existing, ot: newOT });
+window.quickToggle = (wid, field, btn) => {
+  if (!qmPending[wid]) qmPending[wid] = { status: null, ot: false, fn: false };
+  if (!qmPending[wid].status) return;
+  qmPending[wid][field] = !qmPending[wid][field];
+  btn.classList.toggle('active', qmPending[wid][field]);
+  btn.textContent = qmPending[wid][field] ? '✓ ' + field.toUpperCase() : '+' + field.toUpperCase();
 };
 
-window.quickMarkFN = async (wid, btn) => {
+window.quickSaveAll = async () => {
   const d = today();
-  const existing = D.attendance.find(a => a.wid === wid && a.date === d);
-  if (!existing) return;
-  const newFN = !existing.fn;
-  btn.classList.toggle('active', newFN);
-  btn.textContent = newFN ? '✓ FN' : '+FN';
-  await fsSet('attendance', existing.id, { ...existing, fn: newFN });
+  const wids = Object.keys(qmPending).filter(wid => qmPending[wid] && qmPending[wid].status);
+  if (!wids.length) { alert('Select P / H / A for at least one worker first.'); return; }
+  const lines = wids.map(wid => {
+    const state = qmPending[wid];
+    const w = D.workers.find(x => x.id === wid);
+    const advAmt = parseFloat(document.getElementById('qm-adv-' + wid)?.value) || 0;
+    const advNote = document.getElementById('qm-note-' + wid)?.value?.trim() || '';
+    let line = (w ? w.name : wid) + ': ' + state.status;
+    if (state.ot) line += ' + OT';
+    if (state.fn) line += ' + FN';
+    if (advAmt > 0) line += ' | Adv ₹' + advAmt.toLocaleString('en-IN') + (advNote ? ' (' + advNote + ')' : '');
+    return line;
+  });  const msg = 'Save for ' + d + '? ' + lines.join(', ');
+  if (!confirm(msg)) return;
+  const b = writeBatch(db);
+  for (const wid of wids) {
+    const state = qmPending[wid];
+    const existing = D.attendance.find(a => a.wid === wid && a.date === d);
+    const attId = existing ? existing.id : uid();
+    b.set(doc(db,'attendance',attId), { wid, date:d, status:state.status, ot:state.ot||false, fn:state.fn||false, note:'', _updated:serverTimestamp() });
+    const advAmt = parseFloat(document.getElementById('qm-adv-' + wid)?.value) || 0;
+    if (advAmt > 0) {
+      const advNote = document.getElementById('qm-note-' + wid)?.value?.trim() || '';
+      b.set(doc(db,'advances',uid()), { wid, date:d, amount:advAmt, note:advNote, _updated:serverTimestamp() });
+    }
+  }
+  await b.commit();
+  wids.forEach(wid => {
+    const row = document.getElementById('qmr-' + wid);
+    if (row) { row.style.opacity = '0.35'; row.style.pointerEvents = 'none'; }
+    delete qmPending[wid];
+  });
+  const saveBtn = document.getElementById('qm-save-all');
+  if (saveBtn) { saveBtn.textContent = '✓ All Saved'; saveBtn.disabled = true; saveBtn.style.background = 'var(--green)'; }
+  showToast('✓ Saved ' + wids.length + ' workers for ' + d);
 };
 
 /* ── INIT ── */
