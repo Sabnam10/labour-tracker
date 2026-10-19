@@ -435,6 +435,7 @@ tbody tr:hover{background:#f8fafc}
 .qm-a{background:var(--red-bg);color:var(--red);border-color:var(--red-bdr)}.qm-a:hover,.qm-a.active{background:var(--red);color:#fff;border-color:var(--red)}
 .qm-ot{background:var(--blue-bg);color:var(--blue);border-color:rgba(96,165,250,0.3)}.qm-ot:hover,.qm-ot.active{background:var(--blue);color:#fff}
 .qm-fn{background:var(--purple-bg);color:#7c3aed;border-color:rgba(124,58,237,0.3)}.qm-fn:hover,.qm-fn.active{background:#7c3aed;color:#fff}
+.qm-btn:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
 .qm-saved{font-size:10px;font-weight:600;color:var(--green);margin-left:4px;opacity:0;transition:opacity .3s}.qm-saved.show{opacity:1}
 </style>
 </head>
@@ -1087,6 +1088,8 @@ function renderDashboard() {
   const todayStr = today();
 
   // ── TODAY PANEL ──
+  // Don't re-render quick mark panel if user is actively marking
+  const hasActivePending = Object.keys(qmPending).some(k => qmPending[k] && qmPending[k].status);
   const todayPanel = document.getElementById('today-panel');
   if (isCurrentMonth && activeWorkers.length) {
     todayPanel.style.display = 'block';
@@ -1096,15 +1099,22 @@ function renderDashboard() {
     const tA = todayAtt.filter(a => a.status==='A').length;
     const markedIds = todayAtt.map(a => a.wid);
     const unmarked = activeWorkers.filter(w => !markedIds.includes(w.id));
-    document.getElementById('today-chips').innerHTML = `
+    if (!hasActivePending) document.getElementById('today-chips').innerHTML = `
       <div class="today-chip tc-p"><span>${tP}</span> Present</div>
       <div class="today-chip tc-h"><span>${tH}</span> Half Day</div>
       <div class="today-chip tc-a"><span>${tA}</span> Absent</div>
       ${unmarked.length ? `<div class="today-chip tc-n"><span>${unmarked.length}</span> Not marked</div>` : ''}
     `;
-    if (unmarked.length) {
+    if (!hasActivePending && unmarked.length) {
       document.getElementById('unmarked-list').innerHTML =
-        `<div style="font-size:11px;color:var(--muted);font-weight:600;width:100%;margin-bottom:8px">⚡ Quick mark for today:</div>` +
+        `<div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:10px">
+          <span style="font-size:11px;color:var(--muted);font-weight:600">⚡ Quick mark for today</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="setAllStatus('P')" style="height:24px;padding:0 10px;font-size:10px;font-weight:700;border-radius:20px;border:1.5px solid var(--green-bdr);background:var(--green-bg);color:var(--green);cursor:pointer;box-shadow:none">All P</button>
+            <button onclick="setAllStatus('H')" style="height:24px;padding:0 10px;font-size:10px;font-weight:700;border-radius:20px;border:1.5px solid var(--amber-bdr);background:var(--amber-bg);color:var(--amber);cursor:pointer;box-shadow:none">All H</button>
+            <button onclick="setAllStatus('A')" style="height:24px;padding:0 10px;font-size:10px;font-weight:700;border-radius:20px;border:1.5px solid var(--red-bdr);background:var(--red-bg);color:var(--red);cursor:pointer;box-shadow:none">All A</button>
+          </div>
+        </div>` +
         unmarked.map(w => `
           <div class="qm-row" id="qmr-${w.id}">
             <span class="qm-name">${w.name}</span>
@@ -1112,8 +1122,8 @@ function renderDashboard() {
               <button class="qm-btn qm-p" id="qm-p-${w.id}" onclick="quickMark('${w.id}','P',this)">P</button>
               <button class="qm-btn qm-h" id="qm-h-${w.id}" onclick="quickMark('${w.id}','H',this)">H</button>
               <button class="qm-btn qm-a" id="qm-a-${w.id}" onclick="quickMark('${w.id}','A',this)">A</button>
-              <button class="qm-btn qm-ot" id="qm-ot-${w.id}" onclick="quickToggle('${w.id}','ot',this)" style="display:none">+OT</button>
-              <button class="qm-btn qm-fn" id="qm-fn-${w.id}" onclick="quickToggle('${w.id}','fn',this)" style="display:none">+FN</button>
+              <button class="qm-btn qm-ot" id="qm-ot-${w.id}" onclick="quickToggle('${w.id}','ot',this)" disabled>+OT</button>
+              <button class="qm-btn qm-fn" id="qm-fn-${w.id}" onclick="quickToggle('${w.id}','fn',this)" disabled>+FN</button>
             </div>
             <div class="qm-adv-row">
               <input class="qm-adv-input" id="qm-adv-${w.id}" type="number" placeholder="Advance ₹" min="0">
@@ -1123,7 +1133,7 @@ function renderDashboard() {
         `<div style="margin-top:10px;display:flex;justify-content:flex-end">
           <button class="qm-save" id="qm-save-all" onclick="quickSaveAll()" style="height:34px;padding:0 22px;font-size:12px">💾 Save All</button>
         </div>`;
-    } else {
+    } else if (!hasActivePending) {
       document.getElementById('unmarked-list').innerHTML =
         `<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:4px">✓ All workers marked for today</div>`;
     }
@@ -1225,7 +1235,8 @@ function renderDashboard() {
     const notStarted = c.p===0 && c.h===0 && c.ab===0;
     const isOverpaid = c.advs > c.wages && c.wages > 0;
     const isWarning = !isOverpaid && c.wages > 0 && (c.advs/c.wages) >= 0.8;
-    const borderColor = paid ? 'var(--green)' : isOverpaid ? 'var(--red)' : isWarning ? 'var(--amber)' : 'var(--border)';
+    const remAmt = getRemainingAmt(w.id, m, c.net);
+    const borderColor = (remAmt<=0&&c.net>0) ? 'var(--green)' : isOverpaid ? 'var(--red)' : isWarning ? 'var(--amber)' : 'var(--border)';
     const diff = c.net - lc.net;
     const lmText = (lc.net!==0||c.net!==0) ? (diff>0?`▲ ${fmt(diff)} vs last mo`:(diff<0?`▼ ${fmt(Math.abs(diff))} vs last mo`:'= same as last mo')) : '';
     const lmColor = diff>0?'var(--green)':diff<0?'var(--red)':'var(--muted)';
@@ -1237,7 +1248,7 @@ function renderDashboard() {
           ${c.carry!==0?`<div style='margin-top:2px'><span class='cf-badge' style='font-size:9px'>${c.carry>0?'+':''}${fmtS(c.carry)}</span></div>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-          <span class="badge ${paid?'badge-paid':'badge-unpaid'}">${paid?(c.net<=0?'✓ AUTO':'PAID'):'UNPAID'}</span>
+          ${(()=>{ return c.net<=0?'<span style="color:var(--muted);font-size:11px">—</span>':remAmt<=0?'<span style="font-weight:700;color:var(--green);font-size:13px">₹0</span>':'<span style="font-weight:700;color:var(--red);font-size:13px">₹'+fmt(remAmt)+'</span>'; })()}
           ${advWarning(c.wages, c.advs)}
         </div>
       </div>
@@ -2114,6 +2125,16 @@ window.quickToggle = (wid, field, btn) => {
   qmPending[wid][field] = !qmPending[wid][field];
   btn.classList.toggle('active', qmPending[wid][field]);
   btn.textContent = qmPending[wid][field] ? '✓ ' + field.toUpperCase() : '+' + field.toUpperCase();
+};
+
+window.setAllStatus = (status) => {
+  // Click P/H/A for every visible qm-row
+  document.querySelectorAll('[id^="qmr-"]').forEach(row => {
+    if (row.style.pointerEvents === 'none') return; // already saved
+    const wid = row.id.replace('qmr-', '');
+    const btn = document.getElementById('qm-' + status.toLowerCase() + '-' + wid);
+    if (btn) btn.click();
+  });
 };
 
 window.quickSaveAll = async () => {
