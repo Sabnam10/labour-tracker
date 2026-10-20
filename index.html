@@ -710,7 +710,9 @@ const provider = new GoogleAuthProvider();
 
 /* ── LOCAL DATA ── */
 let D = { workers: [], attendance: [], advances: [], settlements: [], wageHistory: [], paidStatus: [] };
+window._D = D; // debug access
 let currentUser = null;
+
 let unsubscribers = [];
 
 /* ── AUTH ── */
@@ -1094,13 +1096,14 @@ function setSort(s) {
 }
 
 function renderDashboard() {
-  const m = document.getElementById('dash-month').value || thisMonth();
+  const m = document.getElementById('dash-month')?.value || thisMonth();
   document.getElementById('page-sub').textContent = mlabel(m).toUpperCase() + ' SUMMARY';
 
   const activeWorkers = D.workers.filter(w => w.active !== false);
   const inactiveCount = D.workers.filter(w => w.active === false).length;
   const isCurrentMonth = m === thisMonth();
   const todayStr = today();
+  console.log('[Dashboard] month=', m, 'workers=', activeWorkers.length, 'att=', D.attendance.length, 'adv=', D.advances.length);
 
   // ── TODAY PANEL ──
   // Don't re-render quick mark panel if user is actively marking
@@ -1157,7 +1160,7 @@ function renderDashboard() {
   }
 
   // ── MONTH PROGRESS ──
-  const daysInM = new Date(parseInt(m.slice(0,4)), parseInt(m.slice(5,7)), 0).getDate();
+  const daysInM = m ? new Date(parseInt(m.slice(0,4)), parseInt(m.slice(5,7)), 0).getDate() : 31;
   const daysPassed = isCurrentMonth ? Math.min(new Date().getDate(), daysInM) : daysInM;
   const pct = Math.round((daysPassed / daysInM) * 100);
   const attDaysMarked = [...new Set(D.attendance.filter(a => a.date && a.date.startsWith(m)).map(a => a.date))].length;
@@ -2200,12 +2203,12 @@ window.quickSaveAll = async () => {
 /* ── INIT ── */
 function initApp() {
   initDarkMode();
-  // Only set defaults if not already set
+  // Set defaults — force set even if already set to ensure correct format
   const dm = document.getElementById('dash-month');
   const ad = document.getElementById('att-date');
   const af = document.getElementById('adv-fm');
   const sf = document.getElementById('set-fm');
-  if (!dm.value) dm.value = thisMonth();
+  dm.value = thisMonth();
   if (!ad.value) ad.value = today();
   if (!af.value) af.value = thisMonth();
   if (!sf.value) sf.value = thisMonth();
