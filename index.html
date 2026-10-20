@@ -812,6 +812,18 @@ function subscribeToData() {
           setSyncStatus('ok', 'Live · ' + new Date().toLocaleTimeString());
           refreshCurrentPage();
           syncAdvSelect();
+        } else {
+          // Fallback: if not all loaded in 4s, render anyway with what we have
+          clearTimeout(window._loadFallback);
+          window._loadFallback = setTimeout(() => {
+            if (!Object.values(initialLoads).every(Boolean)) {
+              // Mark remaining as loaded and render
+              Object.keys(initialLoads).forEach(k => { if (!initialLoads[k]) { initialLoads[k] = true; D[k] = D[k] || []; } });
+              setSyncStatus('ok', 'Live · ' + new Date().toLocaleTimeString());
+              refreshCurrentPage();
+              syncAdvSelect();
+            }
+          }, 4000);
         }
       } else {
         // Subsequent real-time update — refresh immediately
@@ -930,6 +942,7 @@ function getWageForMonth(w, m) {
 }
 
 function getPaidAmt(wid, month) {
+  if (!D.paidStatus) return 0;
   const ps = D.paidStatus.find(p => p.wid === wid && p.month === month);
   if (!ps) return 0;
   return parseFloat(ps.amt) || 0;
@@ -1020,6 +1033,7 @@ window.confirmPaid = async (wid, month, currentNet, prevPaid) => {
 // Compute carry forward for worker w into month m
 // Recursively traces all previous months
 function computeCarry(w, m, depth) {
+  if (!w || !m) return 0;
   if ((depth||0) > 24) return 0; // safety cap: 24 months back max
   const prevMonths = [...new Set([
     ...D.attendance.filter(a => a.wid === w.id && a.date && a.date.slice(0,7) < m).map(a => a.date.slice(0,7)),
@@ -1037,7 +1051,7 @@ function computeCarry(w, m, depth) {
   const lmWages = Math.round((lmP + lmH * 0.5) * lmWage);
   const lmOtp = Math.round(lmOT * lmWage * 0.5);
   const lmFnp = Math.round(lmFN * lmWage);
-  const lmAdvs = D.advances.filter(a => a.wid === w.id && a.date && a.date.startsWith(lm)).reduce((s,a) => s + a.amount, 0);
+  const lmAdvs = (D.advances||[]).filter(a => a.wid === w.id && a.date && a.date.startsWith(lm)).reduce((s,a) => s + a.amount, 0);
   const lmCarry = computeCarry(w, lm, (depth||0) + 1);
   const lmNet = lmWages + lmOtp + lmFnp - lmAdvs + lmCarry;
 
@@ -1048,6 +1062,7 @@ function computeCarry(w, m, depth) {
 
 
 function calcWorker(w, m) {
+  if (!w || !m) return { p:0, h:0, ab:0, otDays:0, fnDays:0, wage:0, wages:0, otp:0, fnp:0, advs:0, carry:0, net:0 };
   const wage = getWageForMonth(w, m);
   // Only active workers or all (for settlements/history)
   const att = D.attendance.filter(a => a.wid === w.id && a.date && a.date.startsWith(m));
@@ -1155,11 +1170,17 @@ function renderDashboard() {
   let tNet = 0, tWages = 0;
   const lastM = (() => { const d = new Date(m+'-01'); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); })();
   const calcs = activeWorkers.map(w => {
-    const c = calcWorker(w, m);
-    const lc = calcWorker(w, lastM); // last month for comparison
-    tNet += c.net;
-    tWages += c.wages + c.otp + c.fnp;
-    return { w, c, lc };
+    try {
+      const c = calcWorker(w, m);
+      const lc = calcWorker(w, lastM);
+      tNet += c.net;
+      tWages += c.wages + c.otp + c.fnp;
+      return { w, c, lc };
+    } catch(e) {
+      console.error('calcWorker error for', w.name, e);
+      const empty = { p:0, h:0, ab:0, otDays:0, fnDays:0, wage:0, wages:0, otp:0, fnp:0, advs:0, carry:0, net:0 };
+      return { w, c: empty, lc: empty };
+    }
   });
 
   // ── SORT ──
