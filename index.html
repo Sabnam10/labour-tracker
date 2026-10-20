@@ -711,6 +711,7 @@ const provider = new GoogleAuthProvider();
 /* ── LOCAL DATA ── */
 let D = { workers: [], attendance: [], advances: [], settlements: [], wageHistory: [], paidStatus: [] };
 window._D = D; // debug access
+const qmPending = {}; // quick mark pending state — top level so renderDashboard can read it
 let currentUser = null;
 
 let unsubscribers = [];
