@@ -2127,21 +2127,25 @@ function getPaidNote(wid, month) {
 
 
 /* ── QUICK MARK FROM DASHBOARD ── */
-window.quickMark = async (wid, status, btn) => {
-  const d = today();
-  const row = document.getElementById('qmr-' + wid);
-  if (row) row.querySelectorAll('.qm-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+window.quickMark = (wid, status, btn) => {
+  // Local state only - nothing is written to Firestore until Save All
+  if (!qmPending[wid]) qmPending[wid] = { status: null, ot: false, fn: false };
+  qmPending[wid].status = status;
+  if (status === 'A') { qmPending[wid].ot = false; qmPending[wid].fn = false; }
+  ['p','h','a'].forEach(s => {
+    const b = document.getElementById('qm-' + s + '-' + wid);
+    if (b) b.classList.toggle('active', s === status.toLowerCase());
+  });
   const otBtn = document.getElementById('qm-ot-' + wid);
-  if (otBtn) otBtn.style.display = (status === 'P' || status === 'H') ? 'inline-flex' : 'none';
   const fnBtn = document.getElementById('qm-fn-' + wid);
-  if (fnBtn) fnBtn.style.display = status === 'P' ? 'inline-flex' : 'none';
-  const existing = D.attendance.find(a => a.wid === wid && a.date === d);
-  const id = existing ? existing.id : uid();
-  await fsSet('attendance', id, { wid, date: d, status, ot: existing ? existing.ot||false : false, fn: false, note: '' });
-  const saved = document.getElementById('qm-saved-' + wid);
-  if (saved) { saved.classList.add('show'); setTimeout(() => saved.classList.remove('show'), 2000); }
-  setTimeout(() => { if (row) { row.style.opacity = '0.35'; row.style.pointerEvents = 'none'; } }, 1500);
+  if (otBtn) {
+    otBtn.disabled = (status === 'A');
+    if (status === 'A') { otBtn.classList.remove('active'); qmPending[wid].ot = false; otBtn.textContent = '+OT'; }
+  }
+  if (fnBtn) {
+    fnBtn.disabled = (status !== 'P');
+    if (status !== 'P') { fnBtn.classList.remove('active'); qmPending[wid].fn = false; fnBtn.textContent = '+FN'; }
+  }
 };
 
 window.quickToggle = (wid, field, btn) => {
